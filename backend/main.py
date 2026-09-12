@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import time
 from collections import defaultdict,deque
 from contextlib import asynccontextmanager
@@ -11,7 +12,7 @@ from fastapi import FastAPI,HTTPException,Query,Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel,Field
-from . import alerts,intent,routing,ingest
+from . import alerts,intent,routing,ingest,cloud_data
 from .config import ROOT,DB
 
 async def refresh_loop():
@@ -28,18 +29,29 @@ async def schedule_loop():
 
 @asynccontextmanager
 async def lifespan(app):
-    task=asyncio.create_task(refresh_loop())
-    schedules=asyncio.create_task(schedule_loop())
-    yield
-    schedules.cancel()
-    task.cancel()
-    try:await task
-    except asyncio.CancelledError:pass
-    try:await schedules
-    except asyncio.CancelledError:pass
+    tasks=[]
+    if cloud_data.enabled():
+        await asyncio.to_thread(cloud_data.sync, True)
+    if not os.getenv('K_SERVICE') and not cloud_data.enabled():
+        tasks=[asyncio.create_task(refresh_loop()),asyncio.create_task(schedule_loop())]
+    try:
+        yield
+    finally:
+        for task in tasks:task.cancel()
+        await asyncio.gather(*tasks,return_exceptions=True)
 
 app=FastAPI(title='MetroAI',version='1.0.0',lifespan=lifespan)
-app.add_middleware(CORSMiddleware,allow_origins=['http://localhost:3000','http://127.0.0.1:3000'],allow_methods=['GET','POST'],allow_headers=['Content-Type'])
+app.add_middleware(CORSMiddleware,allow_origins=os.getenv('CORS_ORIGINS','http://localhost:3000,http://127.0.0.1:3000').split(','),allow_methods=['GET','POST'],allow_headers=['Content-Type'])
+
+@app.middleware('http')
+async def cloud_refresh(request, call_next):
+    if request.url.path.startswith('/api/') and request.url.path != '/api/health':
+        if cloud_data.enabled():
+            await asyncio.to_thread(cloud_data.sync)
+        if os.getenv('K_SERVICE') or cloud_data.enabled():
+            if request.url.path in ('/api/status','/api/alerts','/api/journeys'):
+                await asyncio.to_thread(alerts.ensure_current)
+    return await call_next(request)
 
 @app.get('/api/health')
 def health():return {'status':'ok' if DB.exists() else 'needs_data','timezone':'America/Chicago'}

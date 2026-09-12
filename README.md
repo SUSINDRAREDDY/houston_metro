@@ -1,6 +1,6 @@
 # MetroAI — Group 2
 
-Local Houston transit assistant: Next.js static frontend served by FastAPI, SQLite GTFS routing, current METRO alerts, and OpenRouter free-model intent interpretation. Cloud deployment is deferred at the user's request.
+Local Houston transit assistant: Next.js static frontend served by FastAPI, SQLite GTFS routing, current METRO alerts, and OpenRouter free-model intent interpretation. Cloud Run setup is documented in [docs/CLOUD_RUN.md](docs/CLOUD_RUN.md).
 
 ## Run
 

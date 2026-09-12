@@ -1,6 +1,9 @@
 import hashlib
 import json
 import os
+import threading
+import time
+import logging
 from datetime import datetime, timezone
 import httpx
 from .config import DATA
@@ -52,3 +55,18 @@ def for_route(alerts,route):
 
 if __name__=='__main__':
     r=refresh();print(json.dumps({'fetched_at':r['fetched_at'],'count':len(r['alerts']),'source':r['source']}))
+
+
+_refresh_lock = threading.Lock()
+_last_attempt = 0.0
+
+def ensure_current():
+    global _last_attempt
+    with _refresh_lock:
+        if time.monotonic() - _last_attempt < 300:
+            return
+        _last_attempt = time.monotonic()
+        try:
+            refresh()
+        except Exception:
+            logging.warning('Alert refresh failed; cached alerts retain their freshness label')

@@ -14,4 +14,4 @@ RUN useradd --create-home metro && mkdir /app/data && chown metro:metro /app/dat
 USER metro
 ENV DATA_DIR=/app/data
 EXPOSE 8000
-CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "backend.serve"]
