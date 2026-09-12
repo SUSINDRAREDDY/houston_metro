@@ -46,3 +46,13 @@ def test_calendar_exceptions():
     db.execute("INSERT INTO calendar VALUES ('regular',1,1,1,1,1,1,1,'20260101','20261231')")
     db.executemany('INSERT INTO calendar_dates VALUES (?,?,?)',[('regular','20260912',2),('special','20260912',1)])
     assert routing.active_services(db,datetime(2026,9,12).date())=={'special'}
+
+def test_downtown_includes_red_line():
+    import sqlite3
+    from backend.routing import stop_search
+    db=sqlite3.connect(':memory:');db.row_factory=sqlite3.Row
+    db.execute('CREATE TABLE stops(stop_id TEXT,stop_code TEXT,stop_name TEXT,stop_lat REAL,stop_lon REAL)')
+    for i,name in enumerate(['Central Station Capitol WB','Central Station Rusk EB','Central Stn Main NB','Central Stn Main SB','Fulton North Central SB']):
+        db.execute('INSERT INTO stops VALUES (?,?,?,?,?)',(str(i),str(i),name,29.75,-95.36))
+    assert len(stop_search(db,'Downtown'))==4
+    db.close()

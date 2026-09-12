@@ -29,6 +29,8 @@ def stop_search(db,q,limit=12):
     if not q:return []
     # Aliases resolve to actual named GTFS stops, not invented coordinates.
     aliases={'uh':'uh south university oaks','university of houston':'uh south university oaks','uh central':'uh south university oaks','downtown':'central station','downtown houston':'central station','medical center':'dryden/tmc','nrg':'stadium park','airport':'iah'}
+    if q.lower() in ('downtown','downtown houston'):
+        return [dict(r) for r in db.execute("SELECT stop_id,stop_code,stop_name,stop_lat,stop_lon FROM stops WHERE stop_name LIKE 'Central Station %' OR stop_name LIKE 'Central Stn Main %' ORDER BY stop_name LIMIT ?",(limit,))]
     term=aliases.get(q.lower(),q)
     tokens=term.replace('%','').replace('_','').split()
     where=' AND '.join('stop_name LIKE ?' for _ in tokens)

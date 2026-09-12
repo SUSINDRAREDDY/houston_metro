@@ -54,3 +54,7 @@ Run `.venv/bin/python scripts/research_realtime.py` from the repository. It make
 3. OpenTripPlanner, Realtime Updaters, https://docs.opentripplanner.org/en/v2.4.0/UpdaterConfig/ ; separate TripUpdates and Vehicle Positions updater definitions. Used for architectural interpretation, not proof of METRO's private configuration.
 4. GTFS Realtime reference, https://gtfs.org/documentation/realtime/reference/ ; separate TripUpdate and VehiclePosition entities.
 5. METRO, Learn How to Ride, https://www.ridemetro.org/riding-metro/transit-services/welcome-aboard ; distinguishes estimated realtime arrivals from scheduled arrivals.
+
+## Recheck after Cloud Run deployment
+
+At 2026-09-12T21:25:35Z, the configured subscription key returned HTTP 200 from TripUpdates: 392 entities, all trip updates, zero VehiclePosition entities. The public planner returned HTTP 200 for 109 routes and zero vehicle positions before application filtering. Explicit samples 002, 082, 433, 700, 800 and 900 were all empty. This confirms key validity for arrivals and empty GPS data in these two tested feeds, not the absence of a separate METRO location product. Raw counts are in ignored data/realtime-latest.json.
