@@ -1,5 +1,7 @@
 # Houston METRO realtime location and arrival investigation
 
+**Correction, September 12, 2026:** The later [location investigation](METRO_LOCATION_INVESTIGATION.md) found the documented Transit Data `/data/Vehicles` operation. The current key receives 401 there while TripUpdates succeeds. Earlier statements below about not finding a location product describe the incomplete earlier investigation, not the current finding.
+
 ## Findings
 
 Houston METRO exposes functioning realtime bus arrival predictions. Its public trip-planner GPS query currently returns no vehicles. These are different data products: an arrival update can contain a predicted stop time without providing latitude/longitude. The evidence does not justify claiming that METRO lacks GPS internally, or that its authenticated developer products cannot provide it.[1][2][3]

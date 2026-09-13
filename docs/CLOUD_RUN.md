@@ -29,3 +29,7 @@ Check `/api/health` returns `status: ok`; `/api/status` returns `ready: true` an
 Tests cover cold startup, unchanged generation skipping, corrupt snapshot retention, and first-start storage failure. Cloud IAM, job execution and public journey verification must still be tested after setup; local tests do not establish deployment success.
 
 References: https://cloud.google.com/run/docs/container-contract and https://cloud.google.com/python/docs/reference/storage/latest/google.cloud.storage.blob.Blob
+
+## Live vehicle subscription
+
+Add `METRO_TRANSIT_DATA_API_KEY` to the Cloud Run service using the key for the METRO Transit Data product. Preserve `METRO_API_KEY` for GTFS/alerts. The backend caches the entire OData fleet for 20 seconds per instance, then filters route matches, monitored status, timestamps (120 seconds), Houston bounds, and current trip windows. It deduplicates vehicle IDs and explicitly reports authorization failures. Map markers show current route vehicles, not vehicles guaranteed to serve a future selected itinerary. Rail coverage is not established.
