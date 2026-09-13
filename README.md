@@ -35,9 +35,13 @@ Verified download on 2026-09-12: 8,797 stops, 120 routes, 21,878 trips, 1,415,65
 
 ## Routing contract
 
-Real GTFS trips only. Departure searches cover four hours, with direct or one-transfer journeys, pickup/drop-off restrictions, daily service calendars and exceptions, and previous/next service dates for after-midnight trips. Transfers use the same stop or explicitly published GTFS connections, a minimum three-minute buffer and maximum 60-minute wait. This feed has no transfers.txt, so cross-street walking transfers are not assumed. Results show up to six different route/boarding/alighting combinations. Times are scheduled, not live arrival predictions. Map lines connect actual stops and are labeled as schematic, not street directions.
+Searches default to **Leave now**, using server time in America/Chicago. Explicit past departure times are rejected. Results identify the date/time searched; an empty result says no matching journey was found in the four-hour window.
 
-Current alerts are cached every five minutes while the app runs and marked stale after 15 minutes. Failed refreshes preserve the last successful snapshot. Avoid-alert searches refuse to run with stale/unavailable alerts. Current alerts cannot predict future disruptions. Natural language extracts constraints only and requires review before routing; unsupported requirements produce clarification.
+With walking enabled (default), METRO's official trip planner supplies bus/rail/walking legs and street-path geometry. We filter its alternatives to the selected mode, up to three transfers, at most 1.2 km total walking, the four-hour window, and alert preferences. Transfers count vehicle changes, not walking legs. Available live arrival updates are labeled separately from scheduled times. This is stop-to-stop planning, not door-to-door address routing, and the upstream planner is an external availability dependency.
+
+With walking disabled, the local GTFS router supports direct or one-transfer journeys, pickup/drop-off restrictions, service calendars/exceptions and after-midnight service. Connections use the same stop or published GTFS transfers, a three-minute minimum buffer and 60-minute maximum wait. Local map lines are schematic stop connections. The current feed has no transfers.txt.
+
+Natural language extracts intent only. Unambiguous stop matches trigger the journey search automatically; ambiguous places require selection. Alerts are cached for five minutes and marked stale after 15 minutes; avoid-alert searches refuse stale/unavailable alerts. Current alerts cannot predict future disruptions. See [data flow and storage](docs/DATA_FLOW.md).
 
 ## Refresh and verify
 
@@ -56,4 +60,4 @@ The running local server also refreshes schedules every 24 hours. To refresh imm
 
 A Dockerfile is supplied for later portability. Docker is not installed on this Mac, so the container build has not been verified; the supported and verified launch path for this local version is scripts/start.sh.
 
-Selected journey maps poll METRO's trip-planner vehicle-position endpoint every 20 seconds. Orange markers are drawn only for reported coordinates updated within 120 seconds. Empty and failed responses are explicitly labeled; scheduled positions are never substituted. At implementation verification, the official endpoint returned no positions for routes 900 and 082. Source: https://planyourtrip.ridemetro.org/ (its public GraphQL endpoint is configured in backend/vehicles.py).
+Selected journey maps poll every 20 seconds. With `METRO_TRANSIT_DATA_API_KEY`, positions come from METRO Transit Data's authenticated `/data/Vehicles` endpoint. Only monitored vehicles with recent reports and valid coordinates are shown. The public planner GPS endpoint is a fallback when that key is absent. Bus GPS was verified with the authenticated source; the tested rail routes returned no fresh vehicles. Missing GPS never means no scheduled service. See [the investigation](docs/METRO_LOCATION_INVESTIGATION.md).

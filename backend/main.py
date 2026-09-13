@@ -5,14 +5,14 @@ import os
 import time
 from collections import defaultdict,deque
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Literal
 import httpx
 from fastapi import FastAPI,HTTPException,Query,Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel,Field
-from . import alerts,intent,routing,ingest,cloud_data
+from . import alerts,intent,routing,ingest,cloud_data,connected
 from .config import ROOT,DB
 
 async def refresh_loop():
@@ -107,13 +107,18 @@ class JourneyRequest(BaseModel):
     destination_ids:list[str]=Field(min_length=1,max_length=12)
     departure:datetime
     mode:Literal['any','bus','rail']='any'
-    max_transfers:Literal[0,1]=1
+    max_transfers:Literal[0,1,2,3]=1
+    leave_now:bool=False
+    allow_walking:bool=True
     prefer:Literal['fastest','fewer_transfers']='fastest'
     avoid_alerts:bool=False
 
 @app.post('/api/journeys')
-def journeys(body:JourneyRequest):
+async def journeys(body:JourneyRequest):
     if body.departure.tzinfo is None:raise HTTPException(422,'Departure must include a timezone offset.')
+    now=datetime.now(routing.TZ)
+    if body.leave_now:body.departure=now
+    elif body.departure<now-timedelta(minutes=1):raise HTTPException(422,'That departure time has passed. Choose Leave now or a future time.')
     a=alerts.snapshot()
     if body.avoid_alerts and a['status']!='current':raise HTTPException(503,'Current alerts are unavailable. Turn off avoid alerts or try again later.')
     try:
@@ -121,13 +126,20 @@ def journeys(body:JourneyRequest):
             route_rows=[dict(r) for r in db.execute('SELECT * FROM routes')]
             matched={r['route_id']:alerts.for_route(a['alerts'],r) for r in route_rows}
             exclude=[rid for rid,items in matched.items() if items] if body.avoid_alerts else []
-            options=routing.plan(db,body.origin_ids,body.destination_ids,body.departure,body.mode,body.max_transfers,body.prefer,exclude)
+            if body.allow_walking:
+                points={r['stop_id']:dict(r) for r in db.execute('SELECT * FROM stops')}
+                if any(s not in points for s in body.origin_ids+body.destination_ids):raise ValueError('Choose valid stops.')
+                options=await connected.plan(points[body.origin_ids[0]],points[body.destination_ids[0]],body.departure,body.mode,body.max_transfers,body.prefer,exclude,body.avoid_alerts)
+            else:
+                if body.max_transfers>1:raise ValueError('Enable walking and connected journeys for more than one transfer.')
+                options=routing.plan(db,body.origin_ids,body.destination_ids,body.departure,body.mode,body.max_transfers,body.prefer,exclude)
             for journey in options:
                 found={x['id']:x for leg in journey['legs'] for x in matched.get(leg['route_id'],[])}
-                journey['alerts']=list(found.values())
+                journey['alerts']=list({x['header'].strip().lower():x for x in journey.get('alerts',[])+list(found.values())}.values())
         return {'journeys':options,'alerts_status':a['status'],'alerts_fetched_at':a['fetched_at'],
-            'notice':'Scheduled times in Houston time. Alerts describe current conditions; future disruptions may change.',
-            'search_window_hours':4,'transfer_policy':'Same stop or GTFS-declared transfer; minimum 3 minutes; maximum wait 60 minutes.'}
+            'searched_departure':body.departure.isoformat(),'empty_message':'No bus or rail journey matches this time and your preferences within the next four hours. Try another time or allow more transfers.' if not options else None,
+            'notice':'Houston time. Connected journeys use METRO planner paths and available live updates; local journeys use schedules.',
+            'search_window_hours':4,'transfer_policy':('METRO planner connections; up to 3 transfers and 1.2 km total walking.' if body.allow_walking else 'Same stop or GTFS-declared transfer; minimum 3 minutes; maximum wait 60 minutes.')}
     except ValueError as e:raise HTTPException(422,str(e))
 
 if (ROOT/'frontend/out').exists():app.mount('/',StaticFiles(directory=ROOT/'frontend/out',html=True),name='frontend')
