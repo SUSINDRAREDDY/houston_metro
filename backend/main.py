@@ -134,6 +134,8 @@ async def journeys(body:JourneyRequest):
                 if body.max_transfers>1:raise ValueError('Enable walking and connected journeys for more than one transfer.')
                 options=routing.plan(db,body.origin_ids,body.destination_ids,body.departure,body.mode,body.max_transfers,body.prefer,exclude)
             for journey in options:
+                colors={r['route_id']:r['route_color'] for r in route_rows}
+                for leg in journey['legs']:leg['color']=colors.get(leg['route_id'],'')
                 found={x['id']:x for leg in journey['legs'] for x in matched.get(leg['route_id'],[])}
                 journey['alerts']=list({x['header'].strip().lower():x for x in journey.get('alerts',[])+list(found.values())}.values())
         return {'journeys':options,'alerts_status':a['status'],'alerts_fetched_at':a['fetched_at'],
