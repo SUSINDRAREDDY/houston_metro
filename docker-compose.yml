@@ -1,0 +1,27 @@
+services:
+  app:
+    build: .
+    image: ${METRO_IMAGE:-metroai:v1}
+    platform: linux/amd64
+    ports:
+      - "${METRO_HTTP_PORT:-8080}:8000"
+    environment:
+      DATA_DIR: /app/data
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openrouter/free}
+      METRO_API_KEY: ${METRO_API_KEY:-}
+      METRO_TRANSIT_DATA_API_KEY: ${METRO_TRANSIT_DATA_API_KEY:-}
+    volumes:
+      - metro-data:/app/data
+    command:
+      - sh
+      - -c
+      - |
+        if [ ! -s /app/data/metro.sqlite3 ]; then
+          python -m backend.ingest || exit 1
+        fi
+        exec python -m backend.serve
+    restart: unless-stopped
+
+volumes:
+  metro-data:
