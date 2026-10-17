@@ -7,13 +7,15 @@ import logging
 from datetime import datetime, timezone
 import httpx
 from .config import DATA
+from . import database
 
 PUBLIC_URL='https://www.ridemetro.org/metro-api/alerts'
 API_URL='https://api.ridemetro.org/v2alerts/alerts'
 CACHE=DATA/'alerts.json'
 
 def refresh():
-    key=os.getenv('METRO_API_KEY')
+    from .secrets import get
+    key=get('METRO_API_KEY')
     url=API_URL if key else PUBLIC_URL
     with httpx.Client(timeout=25) as client:
         r=client.get(url,headers={'Ocp-Apim-Subscription-Key':key} if key else {})
@@ -36,12 +38,18 @@ def refresh():
             'routes':routes,'route_kind':route_kind,'header':header.strip(),'description':description.strip(),
             'effect':effect,'updated':updated,'periods':a.get('effect_periods',[])})
     result={'fetched_at':datetime.now(timezone.utc).isoformat(),'source':url,'alerts':alerts}
-    tmp=CACHE.with_suffix('.tmp');tmp.write_text(json.dumps(result));os.replace(tmp,CACHE)
+    if database.managed():
+        database.state_put('metro_alerts', result)
+    else:
+        tmp=CACHE.with_suffix('.tmp');tmp.write_text(json.dumps(result));os.replace(tmp,CACHE)
     return result
 
 def snapshot():
-    if not CACHE.exists():return {'status':'unavailable','fetched_at':None,'source':PUBLIC_URL,'alerts':[]}
-    data=json.loads(CACHE.read_text())
+    if database.managed():
+        data=database.state_get('metro_alerts')
+    else:
+        data=json.loads(CACHE.read_text()) if CACHE.exists() else None
+    if not data:return {'status':'unavailable','fetched_at':None,'source':PUBLIC_URL,'alerts':[]}
     age=(datetime.now(timezone.utc)-datetime.fromisoformat(data['fetched_at'])).total_seconds()
     data['status']='current' if age<=900 else 'stale'
     return data

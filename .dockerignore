@@ -1,5 +1,7 @@
 .env
 .env.*
+**/.env
+**/.env.*
 .git
 .venv
 data
@@ -7,3 +9,14 @@ frontend/node_modules
 frontend/.next
 frontend/out
 __pycache__
+deliverables
+output
+tmp
+logs
+tests
+.pytest_cache
+.ppt-build*
+.m4-build
+*.pem
+*.key
+*service-account*.json

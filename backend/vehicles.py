@@ -72,7 +72,8 @@ def parse_fleet(rows, now):
 
 async def positions(route_id):
     global _fleet_cache
-    key=os.getenv('METRO_TRANSIT_DATA_API_KEY')
+    from .secrets import get
+    key=get('METRO_TRANSIT_DATA_API_KEY')
     if not key:return await _public_positions(route_id)
     async with _fleet_lock:
         now=time.time()

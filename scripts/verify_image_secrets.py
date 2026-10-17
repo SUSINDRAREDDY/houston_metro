@@ -10,9 +10,22 @@ import json
 import re
 import sys
 import tarfile
+import argparse
+import base64
+import subprocess
 from pathlib import Path
 
+parser=argparse.ArgumentParser()
+parser.add_argument('image_tar')
+parser.add_argument('--secret-project')
+args=parser.parse_args()
 values = []
+if args.secret_project:
+    for identifier in ('metroai-openrouter-api-key','metroai-metro-api-key','metroai-transit-data-api-key','metroai-db-password','metroai-db-admin-password'):
+        payload=subprocess.check_output(['gcloud','secrets','versions','access','latest','--secret='+identifier,'--project='+args.secret_project])
+        if len(payload)<8:
+            raise RuntimeError('Refusing incomplete credential scan')
+        values.append(payload)
 env = Path('.env')
 if env.exists():
     for line in env.read_text().splitlines():
@@ -21,11 +34,12 @@ if env.exists():
             value = m[2].strip().strip('\"\'')
             if len(value) >= 8:
                 values.append(value.encode())
+values = list(dict.fromkeys(values))
 hits = 0
 env_files = 0
 files = 0
 layer_bytes = 0
-with tarfile.open(sys.argv[1]) as image:
+with tarfile.open(args.image_tar) as image:
     manifest = json.load(image.extractfile('manifest.json'))[0]
     config = image.extractfile(manifest['Config']).read()
     hits += sum(v in config for v in values)

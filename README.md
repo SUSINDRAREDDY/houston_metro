@@ -1,13 +1,13 @@
 # MetroAI — Group 2
 
-Local Houston transit assistant: Next.js static frontend served by FastAPI, SQLite GTFS routing, current METRO alerts, and OpenRouter free-model intent interpretation. Cloud Run setup is documented in [docs/CLOUD_RUN.md](docs/CLOUD_RUN.md).
+Local Houston transit assistant: Next.js static frontend served by FastAPI, GTFS routing, current METRO alerts, and OpenRouter free-model intent interpretation. Milestone 4 uses private Cloud SQL PostgreSQL, Cloud Storage uploads, and Secret Manager. See [deployment](docs/MILESTONE4_DEPLOYMENT.md), [recording script](docs/MILESTONE4_RECORDING.md), [written analysis](docs/MILESTONE4_ANALYSIS.md), and the real [SQL migration](migrations/001_managed_state.sql). Earlier Cloud Run setup is documented in [docs/CLOUD_RUN.md](docs/CLOUD_RUN.md).
 
 ## Run
 
 ```sh
 uv venv .venv
 uv pip install --python .venv/bin/python -r requirements.txt
-# Copy .env.example to .env and configure OPENROUTER_API_KEY if needed.
+# For local AI use, explicitly export OPENROUTER_API_KEY in your shell.
 .venv/bin/python -m backend.ingest
 .venv/bin/python -m backend.gis
 cd frontend
@@ -58,6 +58,6 @@ The live free-model parser, direct and one-transfer timetable routes, calendar e
 
 The running local server also refreshes schedules every 24 hours. To refresh immediately use the script above. AI transient/schema failures get one bounded retry; quota/authentication failures do not trigger retries or key rotation. Tests include free-only enforcement and recovery from a simulated provider failure.
 
-A Dockerfile is supplied for later portability. Docker is not installed on this Mac, so the container build has not been verified; the supported and verified launch path for this local version is scripts/start.sh.
+A multi-stage Dockerfile builds the static frontend and Python runtime. Milestone 3 uses `docker-compose.yml`; Milestone 4 uses `deploy/docker-compose.milestone4.yml`, without a data volume or secret environment values. Production credentials come from Secret Manager through the attached VM identity. Local SQLite mode remains available for development; the application does not load `.env` files.
 
 Selected journey maps poll every 20 seconds. With `METRO_TRANSIT_DATA_API_KEY`, positions come from METRO Transit Data's authenticated `/data/Vehicles` endpoint. Only monitored vehicles with recent reports and valid coordinates are shown. The public planner GPS endpoint is a fallback when that key is absent. Bus GPS was verified with the authenticated source; the tested rail routes returned no fresh vehicles. Missing GPS never means no scheduled service. See [the investigation](docs/METRO_LOCATION_INVESTIGATION.md).

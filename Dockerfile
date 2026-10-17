@@ -9,6 +9,8 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./backend/
+COPY migrations/ ./migrations/
+COPY scripts/migrate_state.py ./scripts/migrate_state.py
 COPY --from=frontend /build/out ./frontend/out/
 RUN useradd --create-home metro && mkdir /app/data && chown metro:metro /app/data
 USER metro

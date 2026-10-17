@@ -1,0 +1,16 @@
+[Unit]
+Description=MetroAI stateless container deployment
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/metroai
+ExecStart=/usr/bin/bash /opt/metroai/start_milestone4.sh
+ExecStop=/usr/bin/docker compose -p metroai-m4 -f /opt/metroai/docker-compose.milestone4.yml stop
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

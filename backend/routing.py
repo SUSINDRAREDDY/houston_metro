@@ -7,18 +7,22 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from .config import DB
+from . import demo_trace, database
 
 TZ=ZoneInfo('America/Chicago')
 
 def connect():
+    if database.managed():
+        return database.connect()
     if not DB.exists(): raise ValueError('Schedules are not loaded yet. Run the GTFS import.')
-    db=sqlite3.connect(f'file:{DB}?mode=ro',uri=True)
+    db=sqlite3.connect(f'file:{DB}?mode=ro',uri=True, factory=demo_trace.Connection if demo_trace.enabled() else sqlite3.Connection)
     db.row_factory=sqlite3.Row
+    demo_trace.event('DB_OPEN', path=str(DB.resolve()), mode='read-only', persistent_writes=False)
     return db
 
 def active_services(db, day):
     stamp=day.strftime('%Y%m%d');weekday=day.strftime('%A').lower()
-    active={r[0] for r in db.execute(f'SELECT service_id FROM calendar WHERE {weekday}="1" AND start_date<=? AND end_date>=?',(stamp,stamp))}
+    active={r[0] for r in db.execute(f"SELECT service_id FROM calendar WHERE {weekday}='1' AND start_date<=? AND end_date>=?",(stamp,stamp))}
     for sid,kind in db.execute('SELECT service_id,exception_type FROM calendar_dates WHERE date=?',(stamp,)):
         if kind==1: active.add(sid)
         elif kind==2: active.discard(sid)

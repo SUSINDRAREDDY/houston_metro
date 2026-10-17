@@ -1,0 +1,28 @@
+services:
+  app:
+    image: ${METRO_IMAGE:-us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:378ec12f85315cc76188d427267d4f363ded4f5d34a19be8ac344bca035461ba}
+    platform: linux/amd64
+    ports:
+      - "8000:8000"
+    environment:
+      DB_BACKEND: postgres
+      DB_NAME: metroai
+      DB_USER: metroai_app
+      INSTANCE_CONNECTION_NAME: metroai-vm-milestone-20260922:us-central1:metroai-postgres
+      SECRET_PROJECT_ID: metroai-vm-milestone-20260922
+      UPLOAD_BUCKET: metroai-vm-milestone-20260922-uploads
+      OPENROUTER_MODEL: openrouter/free
+      DATA_DIR: /tmp/metro-cache
+      PYTHONDONTWRITEBYTECODE: "1"
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health',timeout=15)"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 90s

@@ -1,9 +1,8 @@
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
-load_dotenv(ROOT / '.env')
+# Production credentials are read from Secret Manager, never from a .env file.
 DATA = Path(os.getenv('DATA_DIR', str(ROOT / 'data')))
 DATA.mkdir(parents=True, exist_ok=True)
 DB = DATA / 'metro.sqlite3'

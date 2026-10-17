@@ -3,6 +3,7 @@ import httpx
 from backend import intent
 
 def test_transient_failure_retries_free_only(monkeypatch):
+    monkeypatch.setenv('OPENROUTER_REASONING_EFFORT','none')
     monkeypatch.setenv('OPENROUTER_API_KEY','test')
     monkeypatch.setenv('OPENROUTER_MODEL','openrouter/free')
     calls=[]
@@ -10,6 +11,7 @@ def test_transient_failure_retries_free_only(monkeypatch):
     def handle(request):
         body=json.loads(request.content);calls.append(body)
         assert body['model']=='openrouter/free'
+        assert body['reasoning']=={'effort':'none'}
         assert body['provider']['max_price']=={'prompt':0,'completion':0}
         if len(calls)==1:return httpx.Response(503)
         return httpx.Response(200,json={'model':'example:free','choices':[{'message':{'content':json.dumps({'origin':'UH','destination':'Downtown','date':'2026-09-12','time':'17:00','mode':'any','max_transfers':1,'prefer':'fastest','avoid_alerts':False,'clarification':None})}}]})
