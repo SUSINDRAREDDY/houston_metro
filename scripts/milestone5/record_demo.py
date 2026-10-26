@@ -130,14 +130,66 @@ def autoscaling():
     raise RuntimeError('Load/scaling demonstration timed out. Evidence is saved; inspect the Job and HPA.')
 
 
+def show_checks():
+    command(['curl', '-fsS', '-I', URL.replace('https://', 'http://') + '/'], 'http-redirect.txt')
+    command(['curl', '-fsS', '-I', URL + '/'], 'https-headers.txt')
+    certificate = state('managedcertificate', 'metroai-certificate')['status']['certificateName']
+    command(['gcloud', 'compute', 'ssl-certificates', 'describe', certificate,
+             '--project=' + PROJECT, '--format=yaml(managed.status,managed.domainStatus)'], 'certificate-active.txt')
+    for endpoint in ['live', 'ready']:
+        command(['curl', '-fsS', URL + '/api/health/' + endpoint], 'probe-' + endpoint + '.json')
+
+
+def staged_demo(stage):
+    global EVIDENCE
+    marker = ROOT / 'evidence' / '.last-demo-evidence'
+    if stage == 1:
+        preflight()
+        stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+        EVIDENCE = ROOT / 'evidence' / ('recording-' + stamp)
+        EVIDENCE.mkdir(parents=True)
+        marker.write_text(EVIDENCE.name)
+        command(KUBE + ['get', 'pods', '-l', 'app=metroai', '-o', 'wide'], 'healthy-replicas.txt')
+        command(KUBE + ['get', 'deployment,hpa,pdb'], 'deployment-hpa-pdb.txt')
+        print('\nShow the app and slide 1. Keep your camera visible. Next command: demo.sh 2', flush=True)
+    else:
+        if not marker.is_file():
+            raise RuntimeError('Run demo.sh 1 first to start a new recording evidence folder.')
+        folder = marker.read_text().strip()
+        if not folder.startswith('recording-') or Path(folder).name != folder:
+            raise RuntimeError('Invalid evidence folder marker. Run demo.sh 1 again.')
+        EVIDENCE = ROOT / 'evidence' / folder
+        if not EVIDENCE.is_dir():
+            raise RuntimeError('The evidence folder is missing. Run demo.sh 1 again.')
+        if stage in (2, 3):
+            preflight()
+        if stage == 2:
+            print('\nLIVE POD DELETION: keep the terminal visible until replacement is verified.', flush=True)
+            replacement()
+            print('\nNext command: demo.sh 3', flush=True)
+        elif stage == 3:
+            autoscaling()
+            print('\nNext command: demo.sh 4', flush=True)
+        else:
+            show_checks()
+            print('\nALSO SHOW IN THE VIDEO: HTTPS app, browser certificate/security details,\nGoogle Cloud ACTIVE certificate page, browser HTTP-to-HTTPS navigation,\nslide 2, and committed Deployment/Service/ingress/HPA/PDB on GitHub.\nExplain liveness versus database readiness and voluntary-eviction PDB limits.\nKeep all presenters visible during their portions; aim for ten minutes.\nSubmit slides, analysis, Active screenshot and live evidence. Upload video\nto OneDrive, share with all three instructors, and submit the link in Canvas.', flush=True)
+    print('\nEvidence folder: ' + str(EVIDENCE), flush=True)
+
+
 def main():
     global EVIDENCE
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true', help='Read-only preflight; do not delete pods or start load.')
+    parser.add_argument('stage', nargs='?', type=int, choices=[1, 2, 3, 4],
+                        help='1: healthy pods; 2: live replacement; 3: actual autoscaling; 4: HTTPS and probes.')
     args = parser.parse_args()
-    preflight()
     if args.check:
+        preflight()
         return
+    if args.stage:
+        staged_demo(args.stage)
+        return
+    preflight()
     stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     EVIDENCE = ROOT / 'evidence' / ('recording-' + stamp)
     EVIDENCE.mkdir(parents=True)

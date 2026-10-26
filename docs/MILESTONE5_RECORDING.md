@@ -4,6 +4,28 @@ Every presenter must show their face during their portion. Keep a camera overlay
 visible beside the terminal/browser. This is a recording plan, not a claim that a
 video has been recorded. Rehearsal evidence cannot replace the live pod-deletion demo.
 
+## Four-command recording option
+
+Run these one at a time in the existing Cloud Shell; each command finishes before
+the next. No manual deletion or load commands are needed in addition.
+
+```bash
+bash ~/metroai-milestone5/demo.sh 1
+bash ~/metroai-milestone5/demo.sh 2
+bash ~/metroai-milestone5/demo.sh 3
+bash ~/metroai-milestone5/demo.sh 4
+```
+
+1 shows healthy replicas and starts a new evidence folder; 2 deletes one pod live
+and waits for its replacement; 3 starts real bounded HTTP load and shows actual
+HPA changes; 4 shows HTTP redirect, verified HTTPS, certificate status and both
+probe responses. Output is live and evidence is saved across the four commands.
+
+Keep the camera on. Separately show the app, both slides, browser security and
+certificate details, the Google Cloud ACTIVE certificate page, browser HTTP
+redirection, and committed manifests. The script does not replace those visual
+requirements, the half-page analysis, or OneDrive upload/sharing/submission.
+
 ## Simplest option: one-command guided demo
 
 In Cloud Shell, run:
