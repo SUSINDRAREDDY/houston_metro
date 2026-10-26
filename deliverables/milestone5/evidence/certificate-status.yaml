@@ -1,0 +1,21 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"networking.gke.io/v1","kind":"ManagedCertificate","metadata":{"annotations":{},"name":"metroai-certificate","namespace":"metroai"},"spec":{"domains":["metroai.136.81.119.160.sslip.io"]}}
+  creationTimestamp: "2026-10-26T02:31:05Z"
+  generation: 2
+  name: metroai-certificate
+  namespace: metroai
+  resourceVersion: "1792981877137359022"
+  uid: c38b2ce2-d5a1-422c-a547-90e27d4af137
+spec:
+  domains:
+  - metroai.136.81.119.160.sslip.io
+status:
+  certificateName: mcrt-0a2e9654-8f55-4313-b784-c9e6deca852b
+  certificateStatus: Provisioning
+  domainStatus:
+  - domain: metroai.136.81.119.160.sslip.io
+    status: Provisioning

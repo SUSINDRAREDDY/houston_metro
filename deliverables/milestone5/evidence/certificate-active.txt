@@ -1,0 +1,7 @@
+expireTime: '2027-01-23T18:31:09.000-08:00'
+managed:
+  domainStatus:
+    metroai.136.81.119.160.sslip.io: ACTIVE
+  status: ACTIVE
+name: mcrt-0a2e9654-8f55-4313-b784-c9e6deca852b
+type: MANAGED

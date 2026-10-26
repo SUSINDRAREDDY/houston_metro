@@ -1,0 +1,22 @@
+[
+  {
+    "backend": "https://www.googleapis.com/compute/v1/projects/metroai-vm-milestone-20260922/zones/us-central1-b/networkEndpointGroups/k8s1-6040bc36-metroai-metroai-80-7e44698a",
+    "status": {
+      "healthStatus": [
+        {
+          "healthState": "HEALTHY",
+          "instance": "https://www.googleapis.com/compute/v1/projects/metroai-vm-milestone-20260922/zones/us-central1-b/instances/gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9",
+          "ipAddress": "10.153.0.24",
+          "port": 8000
+        },
+        {
+          "healthState": "HEALTHY",
+          "instance": "https://www.googleapis.com/compute/v1/projects/metroai-vm-milestone-20260922/zones/us-central1-b/instances/gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9",
+          "ipAddress": "10.153.0.25",
+          "port": 8000
+        }
+      ],
+      "kind": "compute#backendServiceGroupHealth"
+    }
+  }
+]

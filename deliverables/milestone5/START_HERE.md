@@ -24,11 +24,11 @@ Repository: https://github.com/SUSINDRAREDDY/houston_metro/tree/codex/milestone5
 
 ## Remaining verification / human submission
 
-The Google-managed certificate was still Provisioning when this package was first
-prepared. Do not claim HTTPS complete until `kubectl get managedcertificate
-metroai-certificate -n metroai` shows Active and the browser verifies the certificate.
-Background monitoring will append final certificate/TLS evidence when ready.
-Capture the required certificate status screenshot after activation.
+The Google-managed certificate is ACTIVE in Google Cloud; the required screenshot
+is `evidence/certificate-active.jpg`. The Kubernetes ManagedCertificate status may
+lag behind the Compute certificate. Public TLS serving was still propagating at
+the last check, so HTTPS is not yet declared verified. Background monitoring will
+append end-to-end TLS evidence and a browser screenshot when serving succeeds.
 
 Record the full 10-minute video with cameras on. Delete a pod LIVE during the video;
 the saved rehearsal evidence is supplementary. Demonstrate actual HPA scaling,
