@@ -5,6 +5,14 @@ Cluster: `metroai-gke`, `us-central1`
 Hostname: https://metroai.136.81.119.160.sslip.io
 Repository: https://github.com/SUSINDRAREDDY/houston_metro/tree/codex/milestone5-orchestration
 
+## Restart before recording
+
+The web Deployment and HPA are currently removed for a clean redeploy.
+The existing cluster, load balancer, certificate, identities and refresh CronJobs
+are retained. In Cloud Shell run `cd ~/metroai-milestone5`, then
+`kubectl apply -f k8s/`. Wait for two ready pods before starting the recording
+or the guided helper. See `docs/MILESTONE5_REDEPLOY.md` in the repository.
+
 ## Record with one command
 
 In your prepared Cloud Shell terminal run:
