@@ -186,7 +186,6 @@ def staged_demo(stage):
             print('\nNext command: demo.sh 4', flush=True)
         else:
             show_checks()
-            print('\nALSO SHOW IN THE VIDEO: HTTPS app, browser certificate/security details,\nGoogle Cloud ACTIVE certificate page, browser HTTP-to-HTTPS navigation,\nslide 2, and committed Deployment/Service/ingress/HPA/PDB on GitHub.\nExplain liveness versus database readiness and voluntary-eviction PDB limits.\nKeep all presenters visible during their portions; aim for ten minutes.\nSubmit slides, analysis, Active screenshot and live evidence. Upload video\nto OneDrive, share with all three instructors, and submit the link in Canvas.', flush=True)
     print('\nEvidence folder: ' + str(EVIDENCE), flush=True)
 
 
