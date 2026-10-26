@@ -71,7 +71,7 @@ kubectl apply -f k8s/demo/load-test.yaml
 kubectl get hpa metroai -n metroai -w
 ```
 
-The load Job makes actual GET requests to the app homepage for 180 seconds.
+The load Job makes actual GET requests to the app homepage for 60 seconds.
 It does not call the AI provider, write application data, or set replica counts.
 Remove the completed Job before repeating: `kubectl delete job metroai-load-test -n metroai`.
 Save HPA events and pod output during the run. A running Job alone is not proof

@@ -106,9 +106,10 @@ def autoscaling():
     command(KUBE + ['delete', 'job', 'metroai-load-test', '--ignore-not-found'])
     command(KUBE + ['apply', '-f', str(ROOT / 'k8s/demo/load-test.yaml')])
     LOAD_STARTED = True
-    print('\nThe Job sends real HTTP requests for 180 seconds. Replica counts below are live.', flush=True)
+    print('\nThe Job sends real HTTP requests for 60 seconds. Replica counts below are live.', flush=True)
     print('While it runs, explain slide 2: liveness checks the app; readiness also checks PostgreSQL.', flush=True)
     scaled = False
+    completed = False
     deadline = time.monotonic() + 360
     while time.monotonic() < deadline:
         command(KUBE + ['get', 'hpa', 'metroai'])
@@ -127,14 +128,18 @@ def autoscaling():
             raise RuntimeError('Load Job failed. Inspect its logs before claiming a successful demonstration.')
         if any(c['type'] == 'Complete' and c['status'] == 'True' for c in conditions):
             LOAD_STARTED = False
-            command(KUBE + ['logs', 'job/metroai-load-test'], 'load-test-results.json')
-            command(KUBE + ['describe', 'hpa', 'metroai'], 'autoscaling-events.txt')
-            if not scaled:
-                raise RuntimeError('The Job finished but scaling was not observed. Do not claim autoscaling was demonstrated.')
-            print('\nLoad finished. HPA will reduce replicas automatically as CPU falls.', flush=True)
-            return
+            if not completed:
+                command(KUBE + ['logs', 'job/metroai-load-test'], 'load-test-results.json')
+                completed = True
+                if not scaled:
+                    print('\nLoad finished. Waiting for measured HPA changes and additional ready replicas.', flush=True)
+            if scaled:
+                command(KUBE + ['describe', 'hpa', 'metroai'], 'autoscaling-events.txt')
+                print('\nLoad finished and scaling verified. HPA will reduce replicas automatically as CPU falls.', flush=True)
+                return
         time.sleep(15)
-    raise RuntimeError('Load/scaling demonstration timed out. Evidence is saved; inspect the Job and HPA.')
+    command(KUBE + ['describe', 'hpa', 'metroai'], 'autoscaling-events.txt')
+    raise RuntimeError('Scaling was not verified within the observation window. Evidence is saved; a longer load test may be needed. Do not claim success.')
 
 
 def show_checks():

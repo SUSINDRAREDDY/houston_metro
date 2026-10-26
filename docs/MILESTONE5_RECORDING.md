@@ -100,7 +100,7 @@ block this direct deletion; its role concerns voluntary evictions via the Evicti
 ## 3:30-6:30: actual autoscaling
 
 Use a checkout containing the committed `k8s/` directory. The load test is bounded
-to three minutes and requests only the app homepage. It does not call AI services.
+to one minute and requests only the app homepage. It does not call AI services.
 
 ```bash
 kubectl delete job metroai-load-test -n metroai --ignore-not-found

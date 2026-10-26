@@ -7,7 +7,7 @@ data:
   load_test.py: "\"\"\"Bounded HTTP load against MetroAI; no AI calls or database\
     \ writes.\"\"\"\nimport asyncio\nimport json\nimport os\nimport time\nfrom collections\
     \ import Counter\nimport httpx\n\nasync def main():\n    url=os.getenv('TARGET_URL','http://metroai.metroai.svc.cluster.local/')\n\
-    \    seconds=min(240,max(1,int(os.getenv('DURATION_SECONDS','180'))))\n    concurrency=min(96,max(1,int(os.getenv('CONCURRENCY','64'))))\n\
+    \    seconds=min(240,max(1,int(os.getenv('DURATION_SECONDS','60'))))\n    concurrency=min(96,max(1,int(os.getenv('CONCURRENCY','64'))))\n\
     \    counts=Counter()\n    started=time.monotonic(); end=started+seconds\n   \
     \ async with httpx.AsyncClient(timeout=10,limits=httpx.Limits(max_connections=concurrency,max_keepalive_connections=concurrency))\
     \ as client:\n        async def worker():\n            while time.monotonic()<end:\n\
@@ -40,7 +40,7 @@ spec:
         - /load/load_test.py
         env:
         - name: DURATION_SECONDS
-          value: '180'
+          value: '60'
         - name: CONCURRENCY
           value: '64'
         resources:

@@ -8,7 +8,7 @@ import httpx
 
 async def main():
     url=os.getenv('TARGET_URL','http://metroai.metroai.svc.cluster.local/')
-    seconds=min(240,max(1,int(os.getenv('DURATION_SECONDS','180'))))
+    seconds=min(240,max(1,int(os.getenv('DURATION_SECONDS','60'))))
     concurrency=min(96,max(1,int(os.getenv('CONCURRENCY','64'))))
     counts=Counter()
     started=time.monotonic(); end=started+seconds
