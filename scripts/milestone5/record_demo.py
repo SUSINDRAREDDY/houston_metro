@@ -51,7 +51,7 @@ def pause(message):
     input('\nPress Enter when ready to continue: ')
 
 
-def preflight():
+def preflight(check_https=True):
     current = command(['kubectl', 'config', 'current-context'], show=False).strip()
     if current != CONTEXT:
         raise RuntimeError('Wrong cluster context. Connect to metroai-gke first.')
@@ -64,11 +64,18 @@ def preflight():
     active = command(KUBE + ['get', 'job', 'metroai-load-test', '--ignore-not-found', '-o', 'json'], show=False)
     if active and json.loads(active).get('status', {}).get('active', 0):
         raise RuntimeError('An earlier load test is still running. Wait for it to finish.')
-    for path in ['/', '/api/health/live', '/api/health/ready']:
-        with urllib.request.urlopen(URL + path, timeout=20) as response:
-            if response.status != 200:
-                raise RuntimeError(f'HTTPS check failed: {path}')
-    print('READY: correct cluster, two ready replicas, valid HTTPS and both probes working.', flush=True)
+    if check_https:
+        for path in ['/', '/api/health/live', '/api/health/ready']:
+            try:
+                command(['curl', '-fsS', '--retry', '2', '--retry-connrefused',
+                         '--retry-delay', '2', '--connect-timeout', '5', '--max-time', '10',
+                         '-o', '/dev/null', URL + path], show=False, timeout=40)
+            except RuntimeError as exc:
+                raise RuntimeError('HTTPS precheck failed for ' + URL + path +
+                                   '. No pod was deleted and no load test started.\n' + str(exc)) from None
+        print('READY: correct cluster, two ready replicas, valid HTTPS and both probes working.', flush=True)
+    else:
+        print('READY: correct cluster and two ready replicas. HTTPS is checked separately in stage 4.', flush=True)
 
 
 def replacement():
@@ -131,13 +138,15 @@ def autoscaling():
 
 
 def show_checks():
-    command(['curl', '-fsS', '-I', URL.replace('https://', 'http://') + '/'], 'http-redirect.txt')
-    command(['curl', '-fsS', '-I', URL + '/'], 'https-headers.txt')
+    curl = ['curl', '-fsS', '--retry', '2', '--retry-connrefused', '--retry-delay', '2',
+            '--connect-timeout', '5', '--max-time', '10']
+    command(curl + ['-I', URL.replace('https://', 'http://') + '/'], 'http-redirect.txt')
+    command(curl + ['-I', URL + '/'], 'https-headers.txt')
     certificate = state('managedcertificate', 'metroai-certificate')['status']['certificateName']
     command(['gcloud', 'compute', 'ssl-certificates', 'describe', certificate,
              '--project=' + PROJECT, '--format=yaml(managed.status,managed.domainStatus)'], 'certificate-active.txt')
     for endpoint in ['live', 'ready']:
-        command(['curl', '-fsS', URL + '/api/health/' + endpoint], 'probe-' + endpoint + '.json')
+        command(curl + [URL + '/api/health/' + endpoint], 'probe-' + endpoint + '.json')
 
 
 def staged_demo(stage):
@@ -162,7 +171,7 @@ def staged_demo(stage):
         if not EVIDENCE.is_dir():
             raise RuntimeError('The evidence folder is missing. Run demo.sh 1 again.')
         if stage in (2, 3):
-            preflight()
+            preflight(check_https=False)
         if stage == 2:
             print('\nLIVE POD DELETION: keep the terminal visible until replacement is verified.', flush=True)
             replacement()
