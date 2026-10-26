@@ -8,6 +8,4 @@ Our earlier HTTP load test returned only successful responses, and our deletion 
 
 All five required manifests are committed: deployment, service, ingress, autoscaler (`hpa.yaml`), and PodDisruptionBudget (`pdb.yaml`).
 
-[Open the committed manifests on GitHub](https://github.com/SUSINDRAREDDY/houston_metro/tree/codex/milestone5-orchestration/k8s)
-
-Source: [Kubernetes documentation on disruptions and PDB limits](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/)
+[GitHub repository](https://github.com/SUSINDRAREDDY/houston_metro/tree/codex/milestone5-orchestration/k8s)
