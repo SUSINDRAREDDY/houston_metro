@@ -44,7 +44,7 @@ async def lifespan(app):
         await asyncio.to_thread(alerts.ensure_current)
     elif cloud_data.enabled():
         await asyncio.to_thread(cloud_data.sync, True)
-    if not os.getenv('K_SERVICE') and not cloud_data.enabled():
+    if os.getenv('BACKGROUND_REFRESH_ENABLED', 'true').lower() == 'true' and not os.getenv('K_SERVICE') and not cloud_data.enabled():
         tasks=[asyncio.create_task(refresh_loop()),asyncio.create_task(schedule_loop())]
     try:
         yield
@@ -76,7 +76,7 @@ async def demo_requests(request, call_next):
 
 @app.middleware('http')
 async def cloud_refresh(request, call_next):
-    if request.url.path.startswith('/api/') and request.url.path != '/api/health':
+    if request.url.path.startswith('/api/') and not (request.url.path == '/api/health' or request.url.path.startswith('/api/health/')):
         if cloud_data.enabled():
             await asyncio.to_thread(cloud_data.sync)
         if os.getenv('K_SERVICE') or cloud_data.enabled():
@@ -88,6 +88,28 @@ async def cloud_refresh(request, call_next):
 def health():
     ready=database.ready() if database.managed() else DB.exists()
     return {'status':'ok' if ready else 'needs_data','timezone':'America/Chicago','database':'postgresql' if database.managed() else 'sqlite'}
+
+@app.get('/api/health/live')
+def liveness():
+    # A database outage must not cause a container restart loop.
+    return {'status': 'alive'}
+
+@app.get('/api/health/ready')
+def readiness():
+    try:
+        if database.managed():
+            ready = database.ready()
+        else:
+            ready = False
+            if DB.exists():
+                with routing.connect() as db:
+                    ready = bool(db.execute('SELECT 1 FROM stops LIMIT 1').fetchone())
+        if not ready:
+            raise ValueError('Data unavailable')
+    except Exception:
+        # Do not expose database addresses, credentials, or driver errors.
+        raise HTTPException(status_code=503, detail='Database unavailable or transit data not ready') from None
+    return {'status': 'ready'}
 
 @app.get('/api/status')
 def status():

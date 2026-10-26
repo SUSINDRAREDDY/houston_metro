@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metroai-load-test
+  namespace: metroai
+data:
+  load_test.py: "\"\"\"Bounded HTTP load against MetroAI; no AI calls or database\
+    \ writes.\"\"\"\nimport asyncio\nimport json\nimport os\nimport time\nfrom collections\
+    \ import Counter\nimport httpx\n\nasync def main():\n    url=os.getenv('TARGET_URL','http://metroai.metroai.svc.cluster.local/')\n\
+    \    seconds=min(240,max(1,int(os.getenv('DURATION_SECONDS','180'))))\n    concurrency=min(96,max(1,int(os.getenv('CONCURRENCY','64'))))\n\
+    \    counts=Counter()\n    started=time.monotonic(); end=started+seconds\n   \
+    \ async with httpx.AsyncClient(timeout=10,limits=httpx.Limits(max_connections=concurrency,max_keepalive_connections=concurrency))\
+    \ as client:\n        async def worker():\n            while time.monotonic()<end:\n\
+    \                try:\n                    response=await client.get(url)\n  \
+    \                  counts[str(response.status_code)]+=1\n                except\
+    \ httpx.HTTPError:\n                    counts['network_error']+=1\n        await\
+    \ asyncio.gather(*(worker() for _ in range(concurrency)))\n    print(json.dumps({'url':url,'duration_seconds':round(time.monotonic()-started,2),'concurrency':concurrency,'responses':dict(counts)},sort_keys=True),flush=True)\n\
+    \nif __name__=='__main__':\n    asyncio.run(main())\n"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: metroai-load-test
+  namespace: metroai
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+      - name: load
+        image: us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b
+        command:
+        - python
+        - /load/load_test.py
+        env:
+        - name: DURATION_SECONDS
+          value: '180'
+        - name: CONCURRENCY
+          value: '64'
+        resources:
+          requests:
+            cpu: '1'
+            memory: 512Mi
+            ephemeral-storage: 1Gi
+          limits:
+            cpu: '1'
+            memory: 512Mi
+            ephemeral-storage: 1Gi
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: load
+          mountPath: /load
+          readOnly: true
+      volumes:
+      - name: load
+        configMap:
+          name: metroai-load-test

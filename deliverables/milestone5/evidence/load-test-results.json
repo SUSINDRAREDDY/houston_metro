@@ -1,0 +1,1 @@
+{"concurrency": 64, "duration_seconds": 180.48, "responses": {"200": 35715}, "url": "http://metroai.metroai.svc.cluster.local/"}

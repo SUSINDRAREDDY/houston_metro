@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: metroai
+  namespace: metroai
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'
+    cloud.google.com/backend-config: '{"default": "metroai-backend"}'
+spec:
+  type: ClusterIP
+  selector:
+    app: metroai
+  ports:
+  - name: http
+    port: 80
+    targetPort: http

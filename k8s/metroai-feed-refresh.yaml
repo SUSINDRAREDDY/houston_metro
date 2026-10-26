@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: metroai-feed-refresh
+  namespace: metroai
+spec:
+  schedule: 0 3 * * *
+  timeZone: America/Chicago
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          serviceAccountName: metroai-app
+          nodeSelector:
+            kubernetes.io/arch: amd64
+          restartPolicy: Never
+          containers:
+          - name: refresh
+            image: us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b
+            command:
+            - python
+            - -m
+            - backend.managed_refresh
+            envFrom:
+            - configMapRef:
+                name: metroai-config
+            resources:
+              requests:
+                cpu: '1'
+                memory: 2Gi
+                ephemeral-storage: 4Gi
+              limits:
+                cpu: '1'
+                memory: 2Gi
+                ephemeral-storage: 4Gi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              capabilities:
+                drop:
+                - ALL
+              runAsUser: 1000
+              runAsGroup: 1000
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: tmp
+            emptyDir:
+              sizeLimit: 4Gi

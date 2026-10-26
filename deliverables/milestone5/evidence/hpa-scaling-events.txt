@@ -1,0 +1,35 @@
+Name:                                                  metroai
+Namespace:                                             metroai
+Labels:                                                <none>
+Annotations:                                           <none>
+CreationTimestamp:                                     Sun, 25 Oct 2026 21:31:04 -0500
+Reference:                                             Deployment/metroai
+Metrics:                                               ( current / target )
+  resource cpu on pods  (as a percentage of request):  42% (210m) / 60%
+Min replicas:                                          2
+Max replicas:                                          4
+Behavior:
+  Scale Up:
+    Stabilization Window: 0 seconds
+    Select Policy: Max
+    Policies:
+      - Type: Pods  Value: 2  Period: 60 seconds
+  Scale Down:
+    Stabilization Window: 120 seconds
+    Select Policy: Max
+    Policies:
+      - Type: Pods  Value: 1  Period: 60 seconds
+Deployment pods:    4 current / 4 desired
+Conditions:
+  Type            Status  Reason               Message
+  ----            ------  ------               -------
+  AbleToScale     True    ScaleDownStabilized  recent recommendations were higher than current one, applying the highest recent recommendation
+  ScalingActive   True    ValidMetricFound     the HPA was able to successfully calculate a replica count from cpu resource utilization (percentage of request)
+  ScalingLimited  False   DesiredWithinRange   the desired count is within the acceptable range
+Events:
+  Type     Reason                   Age                   From                       Message
+  ----     ------                   ----                  ----                       -------
+  Warning  FailedGetResourceMetric  101s (x4 over 2m26s)  horizontal-pod-autoscaler  No recommendation
+  Normal   SuccessfulRescale        63s                   horizontal-pod-autoscaler  New size: 3; reason: cpu resource utilization (percentage of request) above target
+  Normal   HpaProfilePerformance    38s (x2 over 63s)     horizontal-pod-autoscaler  The HPA rescaled target based on performance profile
+  Normal   SuccessfulRescale        38s                   horizontal-pod-autoscaler  New size: 4; reason: cpu resource utilization (percentage of request) above target

@@ -20,3 +20,5 @@ tests
 *.pem
 *.key
 *service-account*.json
+
+.m5-build

@@ -1,0 +1,6 @@
+{"fetched_at": "2026-10-26T02:31:38.126692+00:00", "count": 30, "source": "https://api.ridemetro.org/v2alerts/alerts"}
+Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7bfbc41ac6e0>
+Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7bfbc41911d0>, 375.135048114), (<aiohttp.client_proto.ResponseHandler object at 0x7bfbc41bc050>, 375.143631116)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7bfbc41ac830>

@@ -1,0 +1,59 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  count: 1
+  eventTime: null
+  firstTimestamp: "2026-10-26T02:32:43Z"
+  involvedObject:
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    name: metroai
+    namespace: metroai
+    resourceVersion: "1792981933740095009"
+    uid: 33fbf01a-a143-44e3-ad9b-edfba80fdedb
+  kind: Event
+  lastTimestamp: "2026-10-26T02:32:43Z"
+  message: 'New size: 3; reason: cpu resource utilization (percentage of request)
+    above target'
+  metadata:
+    creationTimestamp: "2026-10-26T02:32:43Z"
+    name: metroai.18e1f398af1d1d90
+    namespace: metroai
+    resourceVersion: "1792981963799855024"
+    uid: a4358093-503a-4c82-a296-ce9c7da5a3a2
+  reason: SuccessfulRescale
+  reportingComponent: horizontal-pod-autoscaler
+  reportingInstance: ""
+  source:
+    component: horizontal-pod-autoscaler
+  type: Normal
+- apiVersion: v1
+  count: 1
+  eventTime: null
+  firstTimestamp: "2026-10-26T02:33:08Z"
+  involvedObject:
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    name: metroai
+    namespace: metroai
+    resourceVersion: "1792981970173279009"
+    uid: 33fbf01a-a143-44e3-ad9b-edfba80fdedb
+  kind: Event
+  lastTimestamp: "2026-10-26T02:33:08Z"
+  message: 'New size: 4; reason: cpu resource utilization (percentage of request)
+    above target'
+  metadata:
+    creationTimestamp: "2026-10-26T02:33:08Z"
+    name: metroai.18e1f39e88c2ee93
+    namespace: metroai
+    resourceVersion: "1792981988999007019"
+    uid: 1be62a04-f32a-4326-95ad-f37a5ff7a52b
+  reason: SuccessfulRescale
+  reportingComponent: horizontal-pod-autoscaler
+  reportingInstance: ""
+  source:
+    component: horizontal-pod-autoscaler
+  type: Normal
+kind: List
+metadata:
+  resourceVersion: ""

@@ -1,10 +1,11 @@
 services:
   app:
-    image: ${METRO_IMAGE:-us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:378ec12f85315cc76188d427267d4f363ded4f5d34a19be8ac344bca035461ba}
+    image: ${METRO_IMAGE:-us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b}
     platform: linux/amd64
     ports:
       - "8000:8000"
     environment:
+      BACKGROUND_REFRESH_ENABLED: "false"
       DB_BACKEND: postgres
       DB_NAME: metroai
       DB_USER: metroai_app

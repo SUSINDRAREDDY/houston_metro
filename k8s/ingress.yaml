@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: metroai
+  namespace: metroai
+  annotations:
+    kubernetes.io/ingress.class: gce
+    kubernetes.io/ingress.global-static-ip-name: metroai-gke-ip
+    networking.gke.io/managed-certificates: metroai-certificate
+    networking.gke.io/v1beta1.FrontendConfig: metroai-frontend
+    kubernetes.io/ingress.allow-http: 'true'
+spec:
+  rules:
+  - host: metroai.136.81.119.160.sslip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: metroai
+            port:
+              number: 80

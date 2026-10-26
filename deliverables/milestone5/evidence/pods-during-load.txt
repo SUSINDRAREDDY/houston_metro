@@ -1,0 +1,7 @@
+NAME                        READY   STATUS      RESTARTS   AGE     IP            NODE                                         NOMINATED NODE   READINESS GATES
+metroai-649954c666-2qbbt    1/1     Running     0          2m2s    10.153.0.22   gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9   <none>           1/1
+metroai-649954c666-ccc56    1/1     Running     0          62s     10.153.0.24   gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9   <none>           1/1
+metroai-649954c666-j4569    1/1     Running     0          37s     10.153.0.25   gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9   <none>           1/1
+metroai-649954c666-qm5wt    1/1     Running     0          2m13s   10.153.0.20   gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9   <none>           1/1
+metroai-alert-check-9qj8n   0/1     Completed   0          2m13s   10.153.0.21   gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9   <none>           <none>
+metroai-load-test-xlfl9     1/1     Running     0          90s     10.153.0.23   gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9   <none>           <none>

@@ -1,0 +1,8 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: metroai-certificate
+  namespace: metroai
+spec:
+  domains:
+  - metroai.136.81.119.160.sslip.io

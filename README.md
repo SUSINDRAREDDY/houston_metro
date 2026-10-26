@@ -2,6 +2,17 @@
 
 Local Houston transit assistant: Next.js static frontend served by FastAPI, GTFS routing, current METRO alerts, and OpenRouter free-model intent interpretation. Milestone 4 uses private Cloud SQL PostgreSQL, Cloud Storage uploads, and Secret Manager. See [deployment](docs/MILESTONE4_DEPLOYMENT.md), [recording script](docs/MILESTONE4_RECORDING.md), [written analysis](docs/MILESTONE4_ANALYSIS.md), and the real [SQL migration](migrations/001_managed_state.sql). Earlier Cloud Run setup is documented in [docs/CLOUD_RUN.md](docs/CLOUD_RUN.md).
 
+## Milestone 5: GKE orchestration
+
+The app now has a GKE deployment in `metroai-gke` (`us-central1`), reusing the
+Milestone 4 private PostgreSQL database, uploads bucket and Secret Manager identity.
+See [manifests and operations](k8s/README.md), [recording guide](docs/MILESTONE5_RECORDING.md),
+and [availability analysis](deliverables/milestone5/Written_Analysis.md).
+The HTTPS hostname is `metroai.136.81.119.160.sslip.io`; verify the managed certificate
+is Active before recording. HPA keeps 2-4 replicas; readiness checks the database
+and liveness only checks application response. The VM remains available for the
+earlier milestone, with scheduled refresh handed to GKE CronJobs.
+
 ## Run
 
 ```sh

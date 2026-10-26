@@ -1,0 +1,126 @@
+LAST SEEN   TYPE      REASON                              OBJECT                                     MESSAGE
+10m         Normal    ScalingReplicaSet                   deployment/metroai                         Scaled up replica set metroai-7c8d9ff45d from 0 to 2
+10m         Warning   FailedScheduling                    pod/metroai-7c8d9ff45d-2sn9d               no nodes available to schedule pods
+10m         Normal    SuccessfulCreate                    replicaset/metroai-7c8d9ff45d              Created pod: metroai-7c8d9ff45d-lvl5g
+10m         Normal    SuccessfulCreate                    replicaset/metroai-7c8d9ff45d              Created pod: metroai-7c8d9ff45d-2sn9d
+10m         Warning   FailedScheduling                    pod/metroai-7c8d9ff45d-lvl5g               no nodes available to schedule pods
+9m38s       Warning   FailedScheduling                    pod/metroai-7c8d9ff45d-2sn9d               no nodes available to schedule pods
+9m39s       Warning   FailedScheduling                    pod/metroai-7c8d9ff45d-lvl5g               no nodes available to schedule pods
+10m         Normal    TriggeredScaleUp                    pod/metroai-7c8d9ff45d-lvl5g               Pod triggered scale-up: [{https://www.googleapis.com/compute/v1/projects/metroai-vm-milestone-20260922/zones/us-central1-b/instanceGroups/nap-jm1jwg7k-temporary-mig-1qmkevlo-async-1 0->1 (max: 1000)}]
+9m35s       Normal    Scheduled                           pod/metroai-7c8d9ff45d-lvl5g               Successfully assigned metroai/metroai-7c8d9ff45d-lvl5g to gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9
+9m35s       Normal    Scheduled                           pod/metroai-7c8d9ff45d-2sn9d               Successfully assigned metroai/metroai-7c8d9ff45d-2sn9d to gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9
+9m33s       Normal    Pulling                             pod/metroai-7c8d9ff45d-lvl5g               Pulling image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b"
+9m33s       Normal    Pulling                             pod/metroai-7c8d9ff45d-2sn9d               Pulling image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b"
+9m10s       Normal    Created                             pod/metroai-7c8d9ff45d-2sn9d               Container created
+9m10s       Normal    Pulled                              pod/metroai-7c8d9ff45d-2sn9d               Successfully pulled image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b" in 14.366s (23.552s including waiting). Image size: 91014864 bytes.
+9m10s       Normal    Pulled                              pod/metroai-7c8d9ff45d-lvl5g               Successfully pulled image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b" in 14.604s (23.601s including waiting). Image size: 91014864 bytes.
+9m10s       Normal    Created                             pod/metroai-7c8d9ff45d-lvl5g               Container created
+9m10s       Normal    Started                             pod/metroai-7c8d9ff45d-2sn9d               Container started
+9m10s       Normal    Started                             pod/metroai-7c8d9ff45d-lvl5g               Container started
+9m          Warning   Unhealthy                           pod/metroai-7c8d9ff45d-2sn9d               Startup probe failed: Get "http://10.153.0.14:8000/api/health/live": dial tcp 10.153.0.14:8000: connect: connection refused
+9m          Warning   Unhealthy                           pod/metroai-7c8d9ff45d-lvl5g               Startup probe failed: Get "http://10.153.0.8:8000/api/health/live": dial tcp 10.153.0.8:8000: connect: connection refused
+5m          Normal    ScalingReplicaSet                   deployment/metroai                         Scaled up replica set metroai-7879698cdd from 0 to 1
+4m59s       Normal    SuccessfulCreate                    replicaset/metroai-7879698cdd              Created pod: metroai-7879698cdd-g568t
+4m59s       Normal    Scheduled                           pod/metroai-7879698cdd-g568t               Successfully assigned metroai/metroai-7879698cdd-g568t to gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9
+4m33s       Normal    Pulled                              pod/metroai-7879698cdd-g568t               Container image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b" already present on machine and can be accessed by the pod
+4m33s       Warning   Failed                              pod/metroai-7879698cdd-g568t               Error: container has runAsNonRoot and image has non-numeric user (metro), cannot verify user is non-root (pod: "metroai-7879698cdd-g568t_metroai(94d1d54a-0169-4e25-8de4-af62c777ee9c)", container: app)
+4m56s       Warning   Translate                           ingress/metroai                            Translation failed: invalid ingress spec: could not find service "metroai/metroai"
+10s         Normal    Sync                                ingress/metroai                            Scheduled for sync
+4m57s       Warning   MissingCertificate                  ingress/metroai                            ManagedCertificate metroai:metroai-certificate missing
+4m55s       Normal    ADD                                 service/metroai                            metroai/metroai
+4m55s       Normal    UPDATE                              service/metroai                            metroai/metroai
+4m17s       Warning   UnexpectedJob                       cronjob/metroai-alert-refresh              Saw a job that the controller did not create or forgot: metroai-alert-check
+4m54s       Normal    SuccessfulCreate                    job/metroai-alert-check                    Created pod: metroai-alert-check-c26fk
+4m53s       Normal    Scheduled                           pod/metroai-alert-check-c26fk              Successfully assigned metroai/metroai-alert-check-c26fk to gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9
+4m54s       Normal    DNSRecordProvisioningSucceeded      service/metroai                            DNS records updated
+4m30s       Warning   Failed                              pod/metroai-alert-check-c26fk              Error: container has runAsNonRoot and image has non-numeric user (metro), cannot verify user is non-root (pod: "metroai-alert-check-c26fk_metroai(d57fef11-fa87-41b6-81b9-00f39b7d8b38)", container: refresh)
+4m30s       Normal    Pulled                              pod/metroai-alert-check-c26fk              Container image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b" already present on machine and can be accessed by the pod
+4m49s       Normal    Create                              service/metroai                            Created NEG "k8s1-6040bc36-metroai-metroai-80-7e44698a" for metroai/metroai-k8s1-6040bc36-metroai-metroai-80-7e44698a-http/80-http-GCE_VM_IP_PORT-L7-includeDrainNodesL4Local=true in "us-central1-b".
+4m47s       Normal    Attach                              service/metroai                            Attach 3 network endpoint(s) (NEG "k8s1-6040bc36-metroai-metroai-80-7e44698a" in zone "us-central1-b")
+4m46s       Normal    Create                              managedcertificate/metroai-certificate     Create SslCertificate mcrt-0a2e9654-8f55-4313-b784-c9e6deca852b
+3m57s       Warning   FailedGetResourceMetric             horizontalpodautoscaler/metroai            No recommendation
+4m31s       Normal    SuccessfulDelete                    replicaset/metroai-7879698cdd              Deleted pod: metroai-7879698cdd-g568t
+4m31s       Normal    ScalingReplicaSet                   deployment/metroai                         Scaled down replica set metroai-7879698cdd from 1 to 0
+4m31s       Normal    ScalingReplicaSet                   deployment/metroai                         Scaled up replica set metroai-649954c666 from 0 to 1
+4m30s       Normal    SuccessfulCreate                    replicaset/metroai-649954c666              Created pod: metroai-649954c666-qm5wt
+4m30s       Normal    LoadBalancerNegNotReady             pod/metroai-649954c666-qm5wt               Waiting for pod to become healthy in at least one of the NEG(s): [k8s1-6040bc36-metroai-metroai-80-7e44698a]
+4m29s       Normal    Scheduled                           pod/metroai-649954c666-qm5wt               Successfully assigned metroai/metroai-649954c666-qm5wt to gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9
+4m29s       Normal    Started                             pod/metroai-649954c666-qm5wt               Container started
+4m29s       Normal    Scheduled                           pod/metroai-alert-check-9qj8n              Successfully assigned metroai/metroai-alert-check-9qj8n to gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9
+4m29s       Normal    SuccessfulCreate                    job/metroai-alert-check                    Created pod: metroai-alert-check-9qj8n
+4m29s       Normal    Created                             pod/metroai-649954c666-qm5wt               Container created
+4m29s       Normal    Pulled                              pod/metroai-649954c666-qm5wt               Container image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b" already present on machine and can be accessed by the pod
+4m28s       Normal    Pulled                              pod/metroai-alert-check-9qj8n              Container image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b" already present on machine and can be accessed by the pod
+4m28s       Normal    Started                             pod/metroai-alert-check-9qj8n              Container started
+4m28s       Normal    Created                             pod/metroai-alert-check-9qj8n              Container created
+11s         Normal    Attach                              service/metroai                            Attach 1 network endpoint(s) (NEG "k8s1-6040bc36-metroai-metroai-80-7e44698a" in zone "us-central1-b")
+4m26s       Normal    LoadBalancerNegWithoutHealthCheck   pod/metroai-649954c666-qm5wt               Pod is in NEG "Key{\"k8s1-6040bc36-metroai-metroai-80-7e44698a\", zone: \"us-central1-b\"}". NEG is not attached to any BackendService with health checking. Marking condition "cloud.google.com/load-balancer-neg-ready" to True.
+4m25s       Warning   Unhealthy                           pod/metroai-649954c666-qm5wt               Startup probe failed: Get "http://10.153.0.20:8000/api/health/live": dial tcp 10.153.0.20:8000: connect: connection refused
+4m19s       Normal    ScalingReplicaSet                   deployment/metroai                         Scaled down replica set metroai-7c8d9ff45d from 2 to 1
+4m18s       Normal    Scheduled                           pod/metroai-649954c666-2qbbt               Successfully assigned metroai/metroai-649954c666-2qbbt to gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9
+4m19s       Normal    Killing                             pod/metroai-7c8d9ff45d-lvl5g               Stopping container app
+4m19s       Normal    LoadBalancerNegNotReady             pod/metroai-649954c666-2qbbt               Waiting for pod to become healthy in at least one of the NEG(s): [k8s1-6040bc36-metroai-metroai-80-7e44698a]
+4m19s       Normal    SuccessfulDelete                    replicaset/metroai-7c8d9ff45d              Deleted pod: metroai-7c8d9ff45d-lvl5g
+4m19s       Normal    SuccessfulCreate                    replicaset/metroai-649954c666              Created pod: metroai-649954c666-2qbbt
+4m19s       Normal    ScalingReplicaSet                   deployment/metroai                         Scaled up replica set metroai-649954c666 from 1 to 2
+4m18s       Normal    Pulled                              pod/metroai-649954c666-2qbbt               Container image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b" already present on machine and can be accessed by the pod
+4m18s       Normal    Created                             pod/metroai-649954c666-2qbbt               Container created
+4m18s       Normal    Started                             pod/metroai-649954c666-2qbbt               Container started
+3m56s       Normal    Detach                              service/metroai                            Detach 1 network endpoint(s) (NEG "k8s1-6040bc36-metroai-metroai-80-7e44698a" in zone "us-central1-b")
+4m17s       Normal    Completed                           job/metroai-alert-check                    Job completed
+4m15s       Normal    LoadBalancerNegWithoutHealthCheck   pod/metroai-649954c666-2qbbt               Pod is in NEG "Key{\"k8s1-6040bc36-metroai-metroai-80-7e44698a\", zone: \"us-central1-b\"}". NEG is not attached to any BackendService with health checking. Marking condition "cloud.google.com/load-balancer-neg-ready" to True.
+4m13s       Warning   Unhealthy                           pod/metroai-649954c666-2qbbt               Startup probe failed: Get "http://10.153.0.22:8000/api/health/live": dial tcp 10.153.0.22:8000: connect: connection refused
+4m8s        Normal    Killing                             pod/metroai-7c8d9ff45d-2sn9d               Stopping container app
+4m8s        Normal    ScalingReplicaSet                   deployment/metroai                         Scaled down replica set metroai-7c8d9ff45d from 1 to 0
+4m8s        Normal    SuccessfulDelete                    replicaset/metroai-7c8d9ff45d              Deleted pod: metroai-7c8d9ff45d-2sn9d
+3m46s       Normal    Scheduled                           pod/metroai-load-test-xlfl9                Successfully assigned metroai/metroai-load-test-xlfl9 to gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9
+3m47s       Normal    SuccessfulCreate                    job/metroai-load-test                      Created pod: metroai-load-test-xlfl9
+3m46s       Normal    Started                             pod/metroai-load-test-xlfl9                Container started
+3m46s       Normal    Created                             pod/metroai-load-test-xlfl9                Container created
+3m46s       Normal    Pulled                              pod/metroai-load-test-xlfl9                Container image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b" already present on machine and can be accessed by the pod
+3m19s       Normal    SuccessfulRescale                   horizontalpodautoscaler/metroai            New size: 3; reason: cpu resource utilization (percentage of request) above target
+2m54s       Normal    HpaProfilePerformance               horizontalpodautoscaler/metroai            The HPA rescaled target based on performance profile
+3m19s       Normal    SuccessfulCreate                    replicaset/metroai-649954c666              Created pod: metroai-649954c666-ccc56
+3m19s       Normal    LoadBalancerNegNotReady             pod/metroai-649954c666-ccc56               Waiting for pod to become healthy in at least one of the NEG(s): [k8s1-6040bc36-metroai-metroai-80-7e44698a]
+3m18s       Normal    Scheduled                           pod/metroai-649954c666-ccc56               Successfully assigned metroai/metroai-649954c666-ccc56 to gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9
+3m19s       Normal    ScalingReplicaSet                   deployment/metroai                         Scaled up replica set metroai-649954c666 from 2 to 3
+3m18s       Normal    Created                             pod/metroai-649954c666-ccc56               Container created
+3m18s       Normal    Pulled                              pod/metroai-649954c666-ccc56               Container image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b" already present on machine and can be accessed by the pod
+3m17s       Normal    Started                             pod/metroai-649954c666-ccc56               Container started
+3m15s       Normal    LoadBalancerNegWithoutHealthCheck   pod/metroai-649954c666-ccc56               Pod is in NEG "Key{\"k8s1-6040bc36-metroai-metroai-80-7e44698a\", zone: \"us-central1-b\"}". NEG is not attached to any BackendService with health checking. Marking condition "cloud.google.com/load-balancer-neg-ready" to True.
+3m13s       Warning   Unhealthy                           pod/metroai-649954c666-ccc56               Startup probe failed: Get "http://10.153.0.24:8000/api/health/live": dial tcp 10.153.0.24:8000: connect: connection refused
+2m54s       Normal    ScalingReplicaSet                   deployment/metroai                         Scaled up replica set metroai-649954c666 from 3 to 4
+2m54s       Normal    SuccessfulRescale                   horizontalpodautoscaler/metroai            New size: 4; reason: cpu resource utilization (percentage of request) above target
+2m53s       Normal    SuccessfulCreate                    replicaset/metroai-649954c666              Created pod: metroai-649954c666-j4569
+2m53s       Normal    LoadBalancerNegNotReady             pod/metroai-649954c666-j4569               Waiting for pod to become healthy in at least one of the NEG(s): [k8s1-6040bc36-metroai-metroai-80-7e44698a]
+2m53s       Normal    Scheduled                           pod/metroai-649954c666-j4569               Successfully assigned metroai/metroai-649954c666-j4569 to gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9
+2m52s       Normal    Pulled                              pod/metroai-649954c666-j4569               Container image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b" already present on machine and can be accessed by the pod
+2m52s       Normal    Started                             pod/metroai-649954c666-j4569               Container started
+2m52s       Normal    Created                             pod/metroai-649954c666-j4569               Container created
+2m50s       Normal    LoadBalancerNegWithoutHealthCheck   pod/metroai-649954c666-j4569               Pod is in NEG "Key{\"k8s1-6040bc36-metroai-metroai-80-7e44698a\", zone: \"us-central1-b\"}". NEG is not attached to any BackendService with health checking. Marking condition "cloud.google.com/load-balancer-neg-ready" to True.
+2m48s       Warning   Unhealthy                           pod/metroai-649954c666-j4569               Startup probe failed: Get "http://10.153.0.25:8000/api/health/live": dial tcp 10.153.0.25:8000: connect: connection refused
+62s         Normal    SuccessfulCreate                    cronjob/metroai-alert-refresh              Created job metroai-alert-refresh-29883035
+61s         Warning   FailedScheduling                    pod/metroai-alert-refresh-29883035-c2fhf   0/1 nodes are available: 1 Insufficient cpu. no new claims to deallocate, preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+62s         Normal    SuccessfulCreate                    job/metroai-alert-refresh-29883035         Created pod: metroai-alert-refresh-29883035-c2fhf
+62s         Normal    TriggeredScaleUp                    pod/metroai-alert-refresh-29883035-c2fhf   Pod triggered scale-up: [{https://www.googleapis.com/compute/v1/projects/metroai-vm-milestone-20260922/zones/us-central1-b/instanceGroups/nap-1jckv7gs-temporary-mig-30x3asm4-async-1 0->1 (max: 1000)}]
+57s         Normal    Sync                                ingress/metroai                            UrlMap "k8s2-um-h02mcrat-metroai-metroai-9ij7bgnm" created
+53s         Normal    Sync                                ingress/metroai                            TargetProxy "k8s2-tp-h02mcrat-metroai-metroai-9ij7bgnm" created
+42s         Normal    Completed                           job/metroai-load-test                      Job completed
+41s         Normal    Scheduled                           pod/metroai-alert-refresh-29883035-c2fhf   Successfully assigned metroai/metroai-alert-refresh-29883035-c2fhf to gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9
+41s         Normal    Started                             pod/metroai-alert-refresh-29883035-c2fhf   Container started
+41s         Normal    Pulled                              pod/metroai-alert-refresh-29883035-c2fhf   Container image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b" already present on machine and can be accessed by the pod
+41s         Normal    Created                             pod/metroai-alert-refresh-29883035-c2fhf   Container created
+34s         Normal    Sync                                ingress/metroai                            ForwardingRule "k8s2-fr-h02mcrat-metroai-metroai-9ij7bgnm" created
+31s         Normal    Sync                                ingress/metroai                            TargetProxy "k8s2-ts-h02mcrat-metroai-metroai-9ij7bgnm" created
+30s         Normal    SuccessfulDelete                    cronjob/metroai-alert-refresh              Deleted job metroai-alert-check
+30s         Normal    SawCompletedJob                     cronjob/metroai-alert-refresh              Saw completed job: metroai-alert-refresh-29883035, condition: Complete
+30s         Normal    Completed                           job/metroai-alert-refresh-29883035         Job completed
+15s         Normal    SuccessfulCreate                    replicaset/metroai-649954c666              Created pod: metroai-649954c666-89qcw
+14s         Normal    Scheduled                           pod/metroai-649954c666-89qcw               Successfully assigned metroai/metroai-649954c666-89qcw to gk3-metroai-gke-nap-jm1jwg7k-3144e71b-8bs9
+15s         Normal    LoadBalancerNegNotReady             pod/metroai-649954c666-89qcw               Waiting for pod to become healthy in at least one of the NEG(s): [k8s1-6040bc36-metroai-metroai-80-7e44698a]
+15s         Normal    Killing                             pod/metroai-649954c666-2qbbt               Stopping container app
+14s         Normal    Started                             pod/metroai-649954c666-89qcw               Container started
+14s         Normal    Created                             pod/metroai-649954c666-89qcw               Container created
+14s         Normal    Pulled                              pod/metroai-649954c666-89qcw               Container image "us-central1-docker.pkg.dev/metroai-vm-milestone-20260922/metroai/metroai@sha256:a2e225f4b7c6377ad4d6b5be53eb69b410f1754937f922b2c64ace5450d0608b" already present on machine and can be accessed by the pod
+11s         Normal    Sync                                ingress/metroai                            ForwardingRule "k8s2-fs-h02mcrat-metroai-metroai-9ij7bgnm" created
+11s         Normal    IPChanged                           ingress/metroai                            IP is now 136.81.119.160
