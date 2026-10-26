@@ -5,6 +5,19 @@ Cluster: `metroai-gke`, `us-central1`
 Hostname: https://metroai.136.81.119.160.sslip.io
 Repository: https://github.com/SUSINDRAREDDY/houston_metro/tree/codex/milestone5-orchestration
 
+## Record with one command
+
+In your prepared Cloud Shell terminal run:
+
+```bash
+bash ~/metroai-milestone5/demo.sh
+```
+
+Press Enter at each stage. The helper performs real deletion/replacement and
+HTTP-load autoscaling, saves new live evidence, and prompts you to show the browser,
+slides, committed files and certificate. Keep your camera on. You still record the
+video, show browser certificate security information, and submit via OneDrive.
+
 ## Prepared files
 
 - `MetroAI_Milestone5_Two_Slides_Final.pptx`: exactly two editable slides.

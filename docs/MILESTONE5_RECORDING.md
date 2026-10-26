@@ -4,6 +4,35 @@ Every presenter must show their face during their portion. Keep a camera overlay
 visible beside the terminal/browser. This is a recording plan, not a claim that a
 video has been recorded. Rehearsal evidence cannot replace the live pod-deletion demo.
 
+## Simplest option: one-command guided demo
+
+In Cloud Shell, run:
+
+```bash
+bash ~/metroai-milestone5/demo.sh
+```
+
+The prepared helper pauses for Enter between recording stages. It checks that
+there are two ready pods and valid HTTPS before starting. It then shows healthy
+replicas, deletes exactly one pod live, waits for a ready replacement, runs the
+bounded HTTP load Job, and displays real HPA changes. It also shows HTTP redirect,
+certificate status and both probe responses. All live output is saved into a new
+`~/metroai-milestone5/evidence/recording-TIMESTAMP/` folder.
+
+You still switch to the browser for the application, valid certificate/security
+information and Google Cloud ACTIVE certificate page; show the two slides and
+committed manifests when prompted. Keep every presenter visible during their
+portion. The helper does not fabricate successful replacement or scaling: it
+stops if either cannot be verified. It never manually sets replica counts.
+
+The command `bash ~/metroai-milestone5/demo.sh --check` is a read-only preflight.
+The full script performs the pod deletion and load test, so start it for the live
+recording or an intentional rehearsal. Ctrl+C stops the helper and removes an
+active load-test Job it started. Saved evidence remains available.
+
+The detailed manual commands below are a fallback; you do not need to type them
+when using the guided demo.
+
 ## 0:00-1:00: application and topology
 
 Open https://metroai.136.81.119.160.sslip.io after certificate verification succeeds.
