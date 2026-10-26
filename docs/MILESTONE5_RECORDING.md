@@ -81,8 +81,7 @@ certificate details to show a valid certificate matching the hostname. Modern
 browsers can use a site-controls icon instead of a literal padlock.
 
 ```bash
-kubectl get managedcertificate metroai-certificate -n metroai
-kubectl describe managedcertificate metroai-certificate -n metroai
+gcloud compute ssl-certificates describe mcrt-0a2e9654-8f55-4313-b784-c9e6deca852b --project=metroai-vm-milestone-20260922 --format="yaml(managed.status,managed.domainStatus)"
 curl -I http://metroai.136.81.119.160.sslip.io/
 ```
 

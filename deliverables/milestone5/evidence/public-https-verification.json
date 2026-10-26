@@ -1,0 +1,37 @@
+{
+  "verified_at": "2026-10-26T02:47:51.205189+00:00",
+  "hostname": "https://metroai.136.81.119.160.sslip.io",
+  "tls_verification": "Default CA and hostname verification enabled; no bypass",
+  "results": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 16969
+    },
+    {
+      "path": "/api/health/live",
+      "status": 200,
+      "bytes": 18
+    },
+    {
+      "path": "/api/health/ready",
+      "status": 200,
+      "bytes": 18
+    },
+    {
+      "path": "/api/status",
+      "status": 200,
+      "bytes": 579
+    },
+    {
+      "path": "/api/stops?q=UH",
+      "status": 200,
+      "bytes": 251
+    },
+    {
+      "path": "/api/uploads",
+      "status": 200,
+      "bytes": 1023
+    }
+  ]
+}
