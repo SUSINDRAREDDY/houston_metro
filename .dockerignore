@@ -22,3 +22,8 @@ tests
 *service-account*.json
 
 .m5-build
+
+terraform/
+.github/
+
+gha-creds-*.json

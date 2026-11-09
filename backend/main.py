@@ -11,6 +11,7 @@ from typing import Literal
 import httpx
 from fastapi import FastAPI,HTTPException,Query,Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel,Field
 from . import alerts,intent,routing,ingest,cloud_data,connected,database,uploads
@@ -84,6 +85,45 @@ async def cloud_refresh(request, call_next):
                 await asyncio.to_thread(alerts.ensure_current)
     return await call_next(request)
 
+@app.middleware('http')
+async def log_request(request: Request, call_next):
+    started = time.monotonic()
+    request_id = uuid.uuid4().hex
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        response.headers['X-Request-ID'] = request_id
+        return response
+    finally:
+        route = request.scope.get('route')
+        print(json.dumps({
+            'severity': 'ERROR' if status_code >= 500 else 'INFO',
+            'message': 'HTTP request',
+            'event': 'http_request',
+            'method': request.method,
+            'route': getattr(route, 'path', 'unmatched'),
+            'status_code': status_code,
+            'duration_ms': round((time.monotonic() - started) * 1000),
+            'request_id': request_id,
+        }), flush=True)
+
+
+@app.post('/api/internal/demo-503', include_in_schema=False)
+def demo_server_error(request: Request):
+    if request.client is None or request.client.host not in ('127.0.0.1', '::1'):
+        raise HTTPException(status_code=404, detail='Not found')
+    raise HTTPException(status_code=503, detail='Controlled monitoring demonstration')
+
+
+@app.get('/api/version')
+def deployed_version():
+    return JSONResponse(
+        {'commit': os.getenv('METROAI_BUILD_SHA', 'local')},
+        headers={'Cache-Control': 'no-store'},
+    )
+
+
 @app.get('/api/health')
 def health():
     ready=database.ready() if database.managed() else DB.exists()
@@ -96,6 +136,8 @@ def liveness():
 
 @app.get('/api/health/ready')
 def readiness():
+    if os.getenv('METROAI_FAIL_READINESS') == '1':
+        raise HTTPException(status_code=503, detail='Controlled rollout failure')
     try:
         if database.managed():
             ready = database.ready()

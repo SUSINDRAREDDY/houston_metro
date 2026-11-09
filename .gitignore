@@ -11,3 +11,13 @@ node_modules/
 out/
 *.log
 .DS_Store
+
+# Terraform state and local configuration
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+crash.log
+gha-creds-*.json
