@@ -5,6 +5,7 @@ import type {Map as LeafletMap,LayerGroup} from 'leaflet';
 import FilesPanel from './FilesPanel';
 
 type Stop={stop_id:string;stop_name:string;stop_lat:number;stop_lon:number;stop_code:string};
+type Endpoint={query:string;stops:Stop[]};
 type Alert={id:string;header:string;description:string;routes:string[];effect:string};
 type Leg={color?:string;route:string;route_id:string;name:string;mode:string;headsign:string;from:Stop;to:Stop;departure:string;arrival:string;stop_count:number|null;distance_meters?:number;steps?:{distance:number;relativeDirection:string;streetName:string}[];realtime?:boolean;geometry:number[][];stops:Stop[]};
 type Journey={legs:Leg[];departure:string;arrival:string;duration_minutes:number;transfers:number;transfer_wait_minutes:number;walking_meters?:number;source?:string;timing?:string;alerts:Alert[]};
@@ -25,12 +26,53 @@ function transitStyle(mode:string,color?:string,route=''):CSSProperties{
 function ModeIcon({mode,size=16}:{mode:string;size?:number}){return mode==='walk'?<Footprints size={size}/>:mode==='rail'?<TrainFront size={size}/>:<BusFront size={size}/>}
 function localNow(){const parts=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());return parts.replace(' ','T')}
 function chicagoISO(value:string){const probe=new Date(value+'Z');const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',timeZoneName:'shortOffset'}).formatToParts(probe);const offset=parts.find(p=>p.type==='timeZoneName')?.value==='GMT-5'?'-05:00':'-06:00';return value+':00'+offset}
-function StopInput({label,value,onChange}:{label:string;value:Stop[];onChange:(v:Stop[])=>void}){
- const [q,setQ]=useState('');const [hits,setHits]=useState<Stop[]>([]);const [open,setOpen]=useState(false);const [err,setErr]=useState('');
- useEffect(()=>{if(value.length)setQ(value[0].stop_name)},[value]);
- useEffect(()=>{if(!open||q.length<2){setHits([]);return}let cancelled=false;const t=setTimeout(()=>api('stops?q='+encodeURIComponent(q)).then(d=>{if(!cancelled){setHits(d);setErr(d.length?'':'No matching stops. Try a street or station name.')}}).catch(()=>{if(!cancelled)setErr('Stop search is unavailable.')}),250);return()=>{cancelled=true;clearTimeout(t)}},[q,open]);
- return <div className="stop-field"><label>{label}<div className="stop-control"><MapPin size={18}/><input value={q} placeholder={label==='From'?'Station, stop, or UH':'Where are you going?'} onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),150)} onChange={e=>{setQ(e.target.value);if(value.length)onChange([]);setOpen(true)}} aria-label={label} autoComplete="off"/></div></label>{open&&q.length>=2&&<div className="suggestions">{hits.map(s=><button key={s.stop_id} type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>{onChange([s]);setQ(s.stop_name);setOpen(false)}}><MapPin size={15}/><span>{s.stop_name}<small>Stop {s.stop_code||s.stop_id}</small></span></button>)}{err&&<p>{err}</p>}</div>}</div>
+function StopInput({label,value,onChange}:{label:string;value:Endpoint;onChange:(v:Endpoint)=>void}){
+ const [open,setOpen]=useState(false);
+ const [matches,setMatches]=useState<{query:string;stops:Stop[];error?:string}>();
+ const {query}=value;
+
+ useEffect(()=>{
+  if(!open||query.trim().length<2)return;
+  let cancelled=false;
+  const timer=setTimeout(async()=>{
+   try{
+    const stops:Stop[]=await api('stops?q='+encodeURIComponent(query));
+    if(!cancelled)setMatches({query,stops,error:stops.length?undefined:'No matching stops. Try a street or station name.'});
+   }catch{
+    if(!cancelled)setMatches({query,stops:[],error:'Stop search is unavailable.'});
+   }
+  },250);
+  return()=>{cancelled=true;clearTimeout(timer)};
+ },[query,open]);
+
+ const suggestions=open&&query.trim().length>=2&&matches?.query===query?matches:undefined;
+ return <div className="stop-field" onBlur={e=>{
+  if(!e.currentTarget.contains(e.relatedTarget))setOpen(false);
+ }}>
+  <label>{label}<div className="stop-control"><MapPin size={18}/><input
+   value={query} placeholder={label==='From'?'Station, stop, or UH':'Where are you going?'}
+   onFocus={()=>setOpen(true)}
+   onChange={e=>{onChange({query:e.target.value,stops:[]});setOpen(true)}}
+   aria-label={label} autoComplete="off"/></div></label>
+  {suggestions&&<div className="suggestions">
+   {suggestions.stops.map(stop=><button key={stop.stop_id} type="button"
+    onMouseDown={e=>e.preventDefault()}
+    onClick={()=>{onChange({query:stop.stop_name,stops:[stop]});setOpen(false)}}>
+    <MapPin size={15}/><span>{stop.stop_name}<small>Stop {stop.stop_code||stop.stop_id}</small></span>
+   </button>)}
+   {suggestions.error&&<p>{suggestions.error}</p>}
+  </div>}
+ </div>
 }
+
+const stationAliases=new Set(['uh','university of houston','uh central','downtown','downtown houston','medical center','nrg']);
+function resolveEndpoint(query:string,matches:Stop[]):Endpoint {
+ const stationName=(name:string)=>name.replace(/ (NB|SB|EB|WB)$/,'');
+ const sameStation=matches.every(stop=>stationName(stop.stop_name)===stationName(matches[0].stop_name));
+ if(!matches.length||(!sameStation&&!stationAliases.has(query.trim().toLowerCase())))return {query,stops:[]};
+ return {query:matches[0].stop_name,stops:matches};
+}
+
 function TransitMap({journey}:{journey?:Journey}){
  const vehicleLayer=useRef<LayerGroup|null>(null);const [liveStatus,setLiveStatus]=useState('');
  const el=useRef<HTMLDivElement>(null);const map=useRef<LeafletMap|null>(null);const layer=useRef<LayerGroup|null>(null);const [ready,setReady]=useState(false);
@@ -40,11 +82,62 @@ function TransitMap({journey}:{journey?:Journey}){
  return <div className="map-wrap"><div ref={el} className="map"/><div className="map-label"><Navigation size={16}/><span>Houston, Texas</span></div>{journey&&<div className="live-status" role="status">{liveStatus}</div>}<div className="map-note">{journey?(journey.source?'Paths from METRO planner · vehicle markers show current positions':'Stop connections shown · not street directions'):'Choose your trip to see stops on the map'}</div></div>
 }
 export default function Home(){
- const [leaveNow,setLeaveNow]=useState(true);const [walking,setWalking]=useState(true);const [searchedAt,setSearchedAt]=useState('');const [emptyMessage,setEmptyMessage]=useState('');const [tab,setTab]=useState('plan');const [origin,setOrigin]=useState<Stop[]>([]);const [dest,setDest]=useState<Stop[]>([]);const [departure,setDeparture]=useState('');const [mode,setMode]=useState('any');const [prefer,setPrefer]=useState('fastest');const [transfers,setTransfers]=useState(1);const [avoid,setAvoid]=useState(false);const [text,setText]=useState('');const [status,setStatus]=useState<Status|null>(null);const [journeys,setJourneys]=useState<Journey[]>([]);const [selected,setSelected]=useState(0);const [busy,setBusy]=useState('');const [error,setError]=useState('');const [searched,setSearched]=useState(false);const [message,setMessage]=useState('');const [allAlerts,setAllAlerts]=useState<Alert[]>([]);const [routes,setRoutes]=useState<{route_id:string;route_short_name:string;route_long_name:string;route_type:number;route_color?:string}[]>([]);const [routeQuery,setRouteQuery]=useState('');
+ const [leaveNow,setLeaveNow]=useState(true);const [walking,setWalking]=useState(true);const [searchedAt,setSearchedAt]=useState('');const [emptyMessage,setEmptyMessage]=useState('');const [tab,setTab]=useState('plan');const [origin,setOrigin]=useState<Endpoint>({query:'',stops:[]});const [dest,setDest]=useState<Endpoint>({query:'',stops:[]});const [departure,setDeparture]=useState('');const [mode,setMode]=useState('any');const [prefer,setPrefer]=useState('fastest');const [transfers,setTransfers]=useState(1);const [avoid,setAvoid]=useState(false);const [text,setText]=useState('');const [status,setStatus]=useState<Status|null>(null);const [journeys,setJourneys]=useState<Journey[]>([]);const [selected,setSelected]=useState(0);const [busy,setBusy]=useState('');const [error,setError]=useState('');const [searched,setSearched]=useState(false);const [message,setMessage]=useState('');const [allAlerts,setAllAlerts]=useState<Alert[]>([]);const [routes,setRoutes]=useState<{route_id:string;route_short_name:string;route_long_name:string;route_type:number;route_color?:string}[]>([]);const [routeQuery,setRouteQuery]=useState('');
  useEffect(()=>{setDeparture(localNow());api('status').then(setStatus).catch(()=>setError('The transit service is unavailable. Please try again shortly.'));api('alerts').then(d=>setAllAlerts(d.alerts)).catch(()=>{});api('routes').then(setRoutes).catch(()=>{})},[]);
  useEffect(()=>{if(!leaveNow)return;setDeparture(localNow());const timer=setInterval(()=>setDeparture(localNow()),30000);return()=>clearInterval(timer)},[leaveNow]);
- async function search(o=origin,d=dest,at=departure,m=mode,p=prefer,tr=transfers,av=avoid,ln=leaveNow){if(!o.length||!d.length){setError('Choose both stops from the search suggestions.');return}setBusy('Finding journeys');setError('');setMessage('');setJourneys([]);setSearched(false);try{const result=await api('journeys',{origin_ids:o.map(s=>s.stop_id),destination_ids:d.map(s=>s.stop_id),departure:chicagoISO(at),mode:m,prefer:p,max_transfers:tr,avoid_alerts:av,leave_now:ln,allow_walking:walking});setSearchedAt(result.searched_departure);setEmptyMessage(result.empty_message||'No matching bus or rail journeys.');if(ln)setDeparture(localNow());setJourneys(result.journeys);setSelected(0);setSearched(true);setMessage('');setTimeout(()=>document.getElementById('journey-results')?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'}),100)}catch(e){setError((e as Error).message)}finally{setBusy('')}}
- async function understand(request=text){if(busy)return;setBusy('Understanding your trip');setJourneys([]);setSearched(false);setError('');setMessage('');try{const result=await api('interpret',{text:request});const i=result.intent;if(i.clarification){setMessage(i.clarification);return}if(!i.origin||!i.destination||!i.date||!i.time){setMessage('Please include your start, destination, and departure time.');return}const [o,d]=await Promise.all([api('stops?q='+encodeURIComponent(i.origin)),api('stops?q='+encodeURIComponent(i.destination))]);const stationAliases=['uh','university of houston','uh central','downtown','downtown houston','medical center','nrg'];const ambiguous=(hits:Stop[],name:string)=>hits.length>1&&!stationAliases.includes(name.toLowerCase().trim())&&!hits.every(h=>h.stop_name.replace(/ (NB|SB|EB|WB)$/,'')===hits[0].stop_name.replace(/ (NB|SB|EB|WB)$/,''));if(ambiguous(o,i.origin)||ambiguous(d,i.destination)){setOrigin(ambiguous(o,i.origin)?[]:o.slice(0,12));setDest(ambiguous(d,i.destination)?[]:d.slice(0,12));setMessage('That place matches several stops. Choose your exact boarding or destination stop below, then find journeys.');return}setOrigin(o.slice(0,12));setDest(d.slice(0,12));setLeaveNow(result.leave_now===true);setDeparture(i.date+'T'+i.time);setMode(i.mode);setPrefer(i.prefer);setTransfers(i.max_transfers);setAvoid(i.avoid_alerts);if(!o.length||!d.length){setError('One of those places did not match a stop. Choose the exact stops below.');return}await search(o.slice(0,12),d.slice(0,12),i.date+'T'+i.time,i.mode,i.prefer,i.max_transfers,i.avoid_alerts,result.leave_now===true)}catch(e){setError((e as Error).message)}finally{setBusy('')}}
+ async function search(o=origin.stops,d=dest.stops,at=departure,m=mode,p=prefer,tr=transfers,av=avoid,ln=leaveNow){if(!o.length||!d.length){setMessage('');setError('Choose both stops from the search suggestions.');return}setBusy('Finding journeys');setError('');setMessage('');setJourneys([]);setSearched(false);try{const result=await api('journeys',{origin_ids:o.map(s=>s.stop_id),destination_ids:d.map(s=>s.stop_id),departure:chicagoISO(at),mode:m,prefer:p,max_transfers:tr,avoid_alerts:av,leave_now:ln,allow_walking:walking});setSearchedAt(result.searched_departure);setEmptyMessage(result.empty_message||'No matching bus or rail journeys.');if(ln)setDeparture(localNow());setJourneys(result.journeys);setSelected(0);setSearched(true);setMessage('');setTimeout(()=>document.getElementById('journey-results')?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'}),100)}catch(e){setError((e as Error).message)}finally{setBusy('')}}
+ async function understand(request=text){
+  if(busy)return;
+  setBusy('Understanding your trip');
+  setJourneys([]);
+  setSearched(false);
+  setSearchedAt('');
+  setError('');
+  setMessage('');
+  try{
+   const result=await api('interpret',{text:request});
+   const i=result.intent;
+   if(i.clarification){setMessage(i.clarification);return}
+   if(!i.origin||!i.destination||!i.date||!i.time){
+    setMessage('Please include your start, destination, and departure time.');
+    return;
+   }
+
+   const at=i.date+'T'+i.time;
+   const leavingNow=result.leave_now===true;
+   // Keep the interpreted trip settings while the rider chooses an exact platform.
+   setLeaveNow(leavingNow);
+   setDeparture(at);
+   setMode(i.mode);
+   setPrefer(i.prefer);
+   setTransfers(i.max_transfers);
+   setAvoid(i.avoid_alerts);
+   setOrigin({query:i.origin,stops:[]});
+   setDest({query:i.destination,stops:[]});
+
+   const [originHits,destHits]:[Stop[],Stop[]]=await Promise.all([
+    api('stops?q='+encodeURIComponent(i.origin)),
+    api('stops?q='+encodeURIComponent(i.destination))
+   ]);
+   const start=resolveEndpoint(i.origin,originHits);
+   const end=resolveEndpoint(i.destination,destHits);
+   setOrigin(start);
+   setDest(end);
+   if(!originHits.length||!destHits.length){
+    setError('One of those places did not match a stop. Try a nearby stop or station name.');
+    return;
+   }
+   if(!start.stops.length||!end.stops.length){
+    setMessage('That place matches several stops. Pick the exact stop below, then choose Find journeys.');
+    return;
+   }
+   await search(start.stops,end.stops,at,i.mode,i.prefer,i.max_transfers,i.avoid_alerts,leavingNow);
+  }catch(e){
+   setError((e as Error).message);
+  }finally{
+   setBusy('');
+  }
+ }
  const current=journeys[selected];
  return <><header><a className="brand" href="/" aria-label="MetroAI home"><span className="brand-mark">m<span>↗</span></span>metro<span className="brand-ai">ai</span></a><nav aria-label="Main navigation">{[['plan','Plan a trip'],['routes','Routes'],['alerts','Service alerts'],['files','Files']].map(([id,label])=><button className={tab===id?'active':''} onClick={()=>setTab(id)} key={id}>{label}{id==='alerts'&&allAlerts.length>0&&<span className="count">{allAlerts.length}</span>}</button>)}</nav><span className="houston">HOUSTON <span> / </span> TX</span></header>
  <main><div className="page-heading"><div><div className="eyebrow">YOUR CITY. YOUR NEXT STOP.</div><h1>{tab==='plan'?'Your city. One simple trip.':tab==='routes'?'Find your line.':tab==='files'?'Keep your trip together.':'Know before you go.'}</h1><p>{tab==='plan'?'Tell us where. We’ll find the stops, the lines, and your way there.':tab==='routes'?'Explore bus and rail routes in the loaded METRO schedule.':tab==='files'?'Save the files you need for your next journey.':'Current notices from METRO, with the details that matter.'}</p></div><div className="data-badge"><span className="badge-icon"><Clock3 size={19}/></span><div>METRO journey data<small>All times in Houston time</small></div></div></div>
