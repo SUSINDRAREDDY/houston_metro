@@ -196,6 +196,17 @@ async def interpret(body:ParseRequest,request:Request):
         if len(rate[k]) >= (5 if k==host else 15):raise HTTPException(429,'Too many AI requests. Please use the stop controls or try again shortly.')
     rate[host].append(now);rate['global'].append(now)
     try:
+        direct = None if demo_trace.enabled() else intent.parse_direct(body.text, datetime.now(routing.TZ))
+        if direct:
+            parsed = direct['intent']
+            try:
+                with routing.connect() as db:
+                    if routing.stop_search(db, parsed['origin']) and routing.stop_search(db, parsed['destination']):
+                        demo_trace.event('DIRECT_INTENT', result=direct)
+                        return direct
+            except ValueError:
+                # A local timetable may not be loaded yet. Keep AI interpretation available.
+                pass
         result=await intent.parse(body.text)
         demo_trace.event('AI_INTENT', provider='OpenRouter', result=result)
         return result

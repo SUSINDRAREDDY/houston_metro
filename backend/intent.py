@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from datetime import date,datetime
+from datetime import date, datetime, timedelta
 from typing import Literal
 import httpx
 from pydantic import BaseModel,Field
@@ -18,6 +18,65 @@ class Intent(BaseModel):
     prefer: Literal['fastest','fewer_transfers']
     avoid_alerts: bool
     clarification: str|None = Field(description='Only an actual question to ask the rider, ending in a question mark, for missing/ambiguous or unsupported requirements. MUST be null for a complete supported request. Never put analysis, explanations, or comments here.')
+
+# The supported stop-to-stop form keeps the common case independent of the AI provider.
+# The caller checks both extracted names against GTFS before using the result.
+_CLOCK = r'(?:noon|midnight|(?:1[0-2]|0?[1-9])(?::[0-5]\d)?\s*(?:am|pm)|(?:[01]?\d|2[0-3]):[0-5]\d)'
+_DIRECT_TRIP = re.compile(
+    rf'(?:from +)?(?P<origin>[^,?]+?) +to +(?P<destination>[^,?]+?)'
+    r'(?: +(?P<day>today|tomorrow))?'
+    rf'(?:(?:, +| +)(?:(?P<now>leave now)|(?:at|after) +(?P<clock>{_CLOCK})))?'
+    r'(?: +by +(?P<mode>bus|rail|train))?'
+    r'(?:, +(?P<transfers>no transfers|fewer transfers))?'
+    r'(?:, +(?P<alerts>avoid alerts))?',
+    re.IGNORECASE | re.ASCII,
+)
+
+def parse_direct(text: str, now: datetime) -> dict | None:
+    match = _DIRECT_TRIP.fullmatch(' '.join(text.strip().removesuffix('.').split()))
+    if not match:
+        return None
+    parts = match.groupdict()
+    origin, destination = parts['origin'], parts['destination']
+    if max(len(origin), len(destination)) > 100:
+        return None
+    # These words can signal additional trip requirements that the pattern did not consume.
+    if any(re.search(r'\b(?:at|after|before|by|arrive|leave|between|without|only|via|today|tomorrow|now|transfer[s]?)\b', place, re.I)
+           for place in (origin,destination)):
+        return None
+
+    day = now.date()
+    if (parts['day'] or '').lower() == 'tomorrow':
+        if parts['now']:
+            return None
+        day += timedelta(days=1)
+    clock = parts['clock']
+    if clock:
+        clock = clock.lower().replace(' ', '')
+        if clock in ('noon', 'midnight'):
+            time = '12:00' if clock == 'noon' else '00:00'
+        else:
+            clock_format = '%H:%M'
+            if clock.endswith(('am', 'pm')):
+                clock_format = '%I:%M%p' if ':' in clock else '%I%p'
+            time = datetime.strptime(clock, clock_format).strftime('%H:%M')
+    else:
+        time = now.strftime('%H:%M')
+    mode = (parts['mode'] or 'any').lower()
+    transfers = (parts['transfers'] or '').lower()
+    parsed = Intent(
+        origin=origin, destination=destination, date=day.isoformat(), time=time,
+        mode='rail' if mode == 'train' else mode,
+        max_transfers=0 if transfers == 'no transfers' else 1,
+        prefer='fewer_transfers' if transfers == 'fewer transfers' else 'fastest',
+        avoid_alerts=bool(parts['alerts']), clarification=None,
+    )
+    return {
+        'intent': parsed.model_dump(),
+        'leave_now': not clock and day == now.date(),
+        'model': 'metroai-direct',
+    }
+
 
 async def parse(text):
     from .secrets import get

@@ -38,3 +38,57 @@ def test_unspecified_time_cannot_copy_five_pm(monkeypatch):
     assert result['leave_now'] is True
     assert result['intent']['date']==before.date().isoformat()
     assert result['intent']['time']==before.strftime('%H:%M')
+
+
+def test_direct_trip_keeps_date_and_preferences():
+    from datetime import datetime
+
+    now = datetime(2026, 11, 19, 16, 0, tzinfo=intent.TZ)
+    result = intent.parse_direct('UH South to Central Station tomorrow at noon by rail, no transfers', now)
+    assert result == {
+        'intent': {
+            'origin': 'UH South', 'destination': 'Central Station',
+            'date': '2026-11-20', 'time': '12:00', 'mode': 'rail',
+            'max_transfers': 0, 'prefer': 'fastest', 'avoid_alerts': False,
+            'clarification': None,
+        },
+        'leave_now': False,
+        'model': 'metroai-direct',
+    }
+    preset = intent.parse_direct('UH to Downtown, leave now, fewer transfers', now)
+    assert preset['leave_now'] is True
+    assert preset['intent']['prefer'] == 'fewer_transfers'
+
+
+def test_direct_trip_leaves_complex_and_ambiguous_requests_to_ai():
+    from datetime import datetime
+
+    now = datetime(2026, 11, 19, 16, 0, tzinfo=intent.TZ)
+    for prompt in ('UH to Downtown at 5', 'UH to Downtown arrive by 5 PM',
+                   'UH to Downtown without walking', 'UH to Downtown, tomorrow, leave now'):
+        assert intent.parse_direct(prompt, now) is None
+
+
+def test_interpret_uses_direct_parser_for_known_stops(monkeypatch):
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+    from backend import main
+
+    monkeypatch.setattr(main.demo_trace, 'enabled', lambda: False)
+    monkeypatch.setattr(main.routing, 'connect', lambda: nullcontext(object()))
+    monkeypatch.setattr(main.routing, 'stop_search', lambda db, q: [object()] if q in ('UH', 'Downtown') else [])
+    monkeypatch.setattr(main, 'rate', main.defaultdict(main.deque))
+    calls = []
+
+    async def provider(text):
+        calls.append(text)
+        return {'model': 'test-provider'}
+
+    monkeypatch.setattr(intent, 'parse', provider)
+    request = SimpleNamespace(client=SimpleNamespace(host='test'))
+    known = asyncio.run(main.interpret(main.ParseRequest(text='UH to Downtown tomorrow at noon'), request))
+    assert known['model'] == 'metroai-direct'
+    assert not calls
+    unknown = asyncio.run(main.interpret(main.ParseRequest(text='UH to unknown station'), request))
+    assert unknown['model'] == 'test-provider'
+    assert calls == ['UH to unknown station']
