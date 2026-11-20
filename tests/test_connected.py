@@ -80,3 +80,71 @@ def test_journey_validates_ids_and_releases_database_before_network(monkeypatch)
     assert state['calls']==0
     result=asyncio.run(main.journeys(main.JourneyRequest(origin_ids=['1'],destination_ids=['2'],departure=departure)))
     assert result['journeys']==[] and state['calls']==1
+
+
+def option(lines,arrival=30,walking=100):
+    at=datetime(2026,11,21,12,tzinfo=routing.TZ)
+    point={'stop_lat':29.7,'stop_lon':-95.3}
+    return {'legs':[{'mode':mode,'route_id':line,'from':point,'to':{**point,'stop_lat':29.71}} for mode,line in lines],
+            'departure':at.isoformat(),'arrival':(at+timedelta(minutes=arrival)).isoformat(),
+            'transfers':len(lines)-1,'walking_meters':walking}
+
+
+def test_distinct_paths_keep_bus_rail_and_mixed_even_when_rail_is_faster():
+    routes=[option([('rail',str(i))],arrival=10+i) for i in range(10)]
+    routes+=[option([('bus','2')],arrival=80),option([('bus','4'),('rail','700')],arrival=90)]
+    selected=connected.choose_alternatives(routes,'fastest')
+    assert len(selected)==6
+    assert {j['travel_modes'] for j in selected}=={'Bus','Rail','Bus + rail'}
+    assert 'Fastest arrival' in selected[0]['highlights']
+
+
+def test_repeated_departures_do_not_fill_the_alternatives():
+    routes=[option([('bus','2')],arrival=20),option([('bus','2')],arrival=30),option([('bus','4')],arrival=40)]
+    selected=connected.choose_alternatives(routes,'fastest')
+    assert len(selected)==2
+    assert selected[0]['arrival']==routes[0]['arrival']
+
+
+def test_transfer_preference_and_walking_tradeoffs_are_kept():
+    fast=option([('bus','2'),('rail','700')],arrival=20,walking=500)
+    direct=option([('bus','4')],arrival=30,walking=20)
+    selected=connected.choose_alternatives([fast,direct],'fewer_transfers')
+    assert selected[0]['travel_modes']=='Bus'
+    assert selected[0]['highlights']==['Fewest transfers','Least walking']
+    assert selected[1]['highlights']==['Fastest arrival']
+
+
+def test_boarding_stop_changes_are_distinct_paths():
+    from copy import deepcopy
+    a=option([('bus','2')]);b=deepcopy(a)
+    b['legs'][0]['from']['stop_lat']=29.72
+    assert len(connected.choose_alternatives([a,b],'fastest'))==2
+
+
+def test_any_mode_queries_all_profiles_and_keeps_partial_results(monkeypatch):
+    import httpx,json
+    now=datetime.now(routing.TZ);point={'stop_name':'A','stop_lat':29.7,'stop_lon':-95.3}
+    original=httpx.AsyncClient;calls=[]
+    def handle(request):
+        modes=[m['mode'] for m in json.loads(request.content)['variables']['modes']];calls.append(modes)
+        if 'BUS' in modes:return httpx.Response(503)
+        return httpx.Response(200,json={'data':{'plan':{'itineraries':[itinerary(now)] if 'TRANSIT' in modes else []}}})
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kw:original(transport=httpx.MockTransport(handle),**kw))
+    result=asyncio.run(connected.plan(point,point,now,'any',1,'fastest'))
+    assert len(calls)==3 and {m[1] for m in calls}=={'BUS','TRANSIT','TRAM'}
+    assert len(result)==1 and result[0]['alternatives_incomplete'] is True
+    assert result[0]['travel_modes']=='Bus + rail'
+
+
+@pytest.mark.parametrize('mode,expected',[('bus','BUS'),('rail','TRAM')])
+def test_specific_mode_does_not_search_unrequested_modes(monkeypatch,mode,expected):
+    import httpx,json
+    original=httpx.AsyncClient;calls=[]
+    def handle(request):
+        calls.append(json.loads(request.content)['variables']['modes'])
+        return httpx.Response(200,json={'data':{'plan':{'itineraries':[]}}})
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kw:original(transport=httpx.MockTransport(handle),**kw))
+    point={'stop_lat':29.7,'stop_lon':-95.3}
+    assert asyncio.run(connected.plan(point,point,datetime.now(routing.TZ),mode,1,'fastest'))==[]
+    assert len(calls)==1 and calls[0][1]['mode']==expected

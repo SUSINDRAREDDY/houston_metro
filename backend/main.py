@@ -265,7 +265,7 @@ async def journeys(body:JourneyRequest):
             if not body.allow_walking:
                 demo_trace.event('ROUTING_SOURCE', source='local SQLite', tables=['stops','routes','trips','stop_times','calendar','calendar_dates','feed_info','transfers'])
                 if body.max_transfers>1:raise ValueError('Enable walking and connected journeys for more than one transfer.')
-                options=routing.plan(db,body.origin_ids,body.destination_ids,body.departure,body.mode,body.max_transfers,body.prefer,exclude)
+                options=connected.choose_alternatives(routing.plan(db,body.origin_ids,body.destination_ids,body.departure,body.mode,body.max_transfers,body.prefer,exclude),body.prefer)
         # Release the SQL connection before waiting for the external journey API.
         if body.allow_walking:
             demo_trace.event('ROUTING_SOURCE', source='external METRO planner', sqlite_role='route metadata and stop coordinates')
@@ -277,6 +277,7 @@ async def journeys(body:JourneyRequest):
             journey['alerts']=list({x['header'].strip().lower():x for x in journey.get('alerts',[])+list(found.values())}.values())
         demo_trace.event('JOURNEY_RESULT', count=len(options), database_write=False, journeys=[{'departure':j['departure'],'arrival':j['arrival'],'legs':[{'route_id':l['route_id'],'trip_id':l.get('trip_id'),'from':l['from']['stop_name'],'to':l['to']['stop_name']} for l in j['legs']]} for j in options])
         return {'journeys':options,'alerts_status':a['status'],'alerts_fetched_at':a['fetched_at'],
+            'alternatives_notice':'Some route searches are unavailable. These are the options we could check.' if any(j.get('alternatives_incomplete') for j in options) else None,
             'searched_departure':body.departure.isoformat(),'empty_message':'No bus or rail journey matches this time and your preferences within the next four hours. Try another time or allow more transfers.' if not options else None,
             'notice':'Houston time. Connected journeys use METRO planner paths and available live updates; local journeys use schedules.',
             'search_window_hours':4,'transfer_policy':('METRO planner connections; up to 3 transfers and 1.2 km total walking.' if body.allow_walking else 'Same stop or GTFS-declared transfer; minimum 3 minutes; maximum wait 60 minutes.')}

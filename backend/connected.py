@@ -1,4 +1,5 @@
 """Connected walking/transit itineraries from METRO's own journey planner."""
+import asyncio
 from datetime import datetime,timedelta
 import httpx
 from .routing import TZ
@@ -55,23 +56,74 @@ def convert(it, departure, max_transfers, mode, excluded, avoid):
             'transfer_wait_minutes':0,'walking_meters':walking,'timing':'live_updates' if any(l['realtime'] for l in rides) else 'scheduled',
             'source':'METRO trip planner','alerts':alerts}
 
+def travel_modes(journey):
+    modes={leg['mode'] for leg in journey['legs'] if leg['mode']!='walk'}
+    return 'Bus + rail' if modes=={'bus','rail'} else 'Bus' if modes=={'bus'} else 'Rail'
+
+
+def route_signature(journey):
+    # Keep different lines and boarding/alighting places, not repeated departures.
+    def point(stop):
+        return (round(float(stop['stop_lat']),4),round(float(stop['stop_lon']),4))
+    return tuple((leg['mode'],leg['route_id'],point(leg['from']),point(leg['to']))
+                 for leg in journey['legs'] if leg['mode']!='walk')
+
+
+def choose_alternatives(journeys,prefer,limit=6):
+    if not journeys:return []
+    arrival=lambda j:datetime.fromisoformat(j['arrival']).timestamp()
+    walk=lambda j:j.get('walking_meters',0)
+    rank=lambda j:(j['transfers'] if prefer=='fewer_transfers' else 0,arrival(j),walk(j))
+    unique={}
+    for journey in sorted(journeys,key=rank):unique.setdefault(route_signature(journey),journey)
+    candidates=sorted(unique.values(),key=rank)
+    fastest=min(candidates,key=lambda j:(arrival(j),walk(j)))
+    fewest=min(candidates,key=lambda j:(j['transfers'],arrival(j),walk(j)))
+    least_walk=min(candidates,key=lambda j:(walk(j),arrival(j)))
+    selected=[];seen=set()
+    def add(journey):
+        key=route_signature(journey)
+        if key not in seen and len(selected)<limit:selected.append(journey);seen.add(key)
+    add(candidates[0])
+    for journey in (fastest,fewest,least_walk):add(journey)
+    for kind in ('Bus','Rail','Bus + rail'):
+        match=next((j for j in candidates if travel_modes(j)==kind),None)
+        if match is not None:add(match)
+    for journey in candidates:add(journey)
+    varied_transfers=len({j['transfers'] for j in candidates})>1
+    varied_walk=len({walk(j) for j in candidates})>1
+    result=[]
+    for journey in sorted(selected,key=rank):
+        highlights=[]
+        if arrival(journey)==arrival(fastest):highlights.append('Fastest arrival')
+        if varied_transfers and journey['transfers']==fewest['transfers']:highlights.append('Fewest transfers')
+        if varied_walk and walk(journey)==walk(least_walk):highlights.append('Least walking')
+        result.append({**journey,'travel_modes':travel_modes(journey),'highlights':highlights})
+    return result
+
+
 async def plan(origin,dest,departure,mode,max_transfers,prefer,excluded=(),avoid=False):
     at=departure.astimezone(TZ)
     if at.microsecond:at=at.replace(microsecond=0)+timedelta(seconds=1)
-    modes=[{'mode':'WALK'}]+([{'mode':'TRANSIT'}] if mode=='any' else [{'mode':'BUS'}] if mode=='bus' else [{'mode':'TRAM'},{'mode':'RAIL'},{'mode':'SUBWAY'}])
-    variables={'from':f"{origin['stop_lat']},{origin['stop_lon']}",'to':f"{dest['stop_lat']},{dest['stop_lon']}",'date':at.strftime('%Y-%m-%d'),'time':at.strftime('%H:%M:%S'),'modes':modes}
-    demo_trace.event('EXTERNAL_REQUEST', provider='METRO planner', coordinates_and_time=variables)
-    try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(15,connect=4)) as client:
+    profiles={'any':[{'mode':'TRANSIT'}],'bus':[{'mode':'BUS'}],'rail':[{'mode':'TRAM'},{'mode':'RAIL'},{'mode':'SUBWAY'}]}
+    async with httpx.AsyncClient(timeout=httpx.Timeout(15,connect=4)) as client:
+        async def search(profile):
+            variables={'from':f"{origin['stop_lat']},{origin['stop_lon']}",'to':f"{dest['stop_lat']},{dest['stop_lon']}",'date':at.strftime('%Y-%m-%d'),'time':at.strftime('%H:%M:%S'),'modes':[{'mode':'WALK'}]+profiles[profile]}
+            demo_trace.event('EXTERNAL_REQUEST',provider='METRO planner',profile=profile,coordinates_and_time=variables)
             response=await client.post(URL,json={'query':QUERY,'variables':variables});response.raise_for_status();data=response.json()
-        if data.get('errors'):raise ValueError('Planner rejected the request')
-        itineraries=data['data']['plan']['itineraries']
-        result=[j for it in itineraries if (j:=convert(it,departure,max_transfers,mode,excluded,avoid))]
-        demo_trace.event('EXTERNAL_RESULT', provider='METRO planner', itineraries_received=len(itineraries), itineraries_matching_filters=len(result))
-    except (httpx.HTTPError,ValueError,KeyError,TypeError,IndexError):
+            if data.get('errors'):raise ValueError('Planner rejected the request')
+            itineraries=data['data']['plan']['itineraries']
+            # Validate against the requested sub-search as well as rider constraints.
+            result=[j for it in itineraries if (j:=convert(it,departure,max_transfers,profile,excluded,avoid))]
+            demo_trace.event('EXTERNAL_RESULT',provider='METRO planner',profile=profile,itineraries_received=len(itineraries),itineraries_matching_filters=len(result))
+            return result
+        batches=await asyncio.gather(*(search(profile) for profile in (('any','bus','rail') if mode=='any' else (mode,))),return_exceptions=True)
+    incomplete=any(isinstance(batch,BaseException) for batch in batches)
+    result=[journey for batch in batches if isinstance(batch,list) for journey in batch]
+    if incomplete and not result:
         raise PlannerUnavailable('Connected journey planner is unavailable. Try again or turn off walking to search local schedules.') from None
     for journey in result:
         journey['legs'][0]['from']['stop_name']=origin['stop_name']
         journey['legs'][-1]['to']['stop_name']=dest['stop_name']
-    result.sort(key=lambda j:(j['transfers'] if prefer=='fewer_transfers' else 0,j['arrival'],j['walking_meters']))
-    return result[:6]
+        journey['alternatives_incomplete']=incomplete
+    return choose_alternatives(result,prefer)
