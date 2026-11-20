@@ -111,6 +111,16 @@ def test_manual_future_defaults_are_kept(monkeypatch):
     assert result['intent']['time']=='14:00'
     assert result['leave_now'] is False
 
+def test_explicit_now_overrides_future_controls(monkeypatch):
+    fake_provider(monkeypatch,[extracted(time_text='leave now')])
+    result=asyncio.run(intent.parse('UH to Fannin South, leave now',defaults={'departure':'2026-11-21T14:00:00-06:00','leave_now':False}))
+    assert result['leave_now'] is True and result['intent']['date']=='2026-11-20'
+
+@pytest.mark.parametrize('prompt',['UH to Downtown by bus or rail','UH to Downtown by train and bus'])
+def test_multiple_allowed_modes_are_not_misread_as_one_mode_only(monkeypatch,prompt):
+    fake_provider(monkeypatch,[extracted(mode='any')])
+    assert asyncio.run(intent.parse(prompt))['intent']['mode']=='any'
+
 def test_unsupported_requirements_not_dropped(monkeypatch):
     fake_provider(monkeypatch,[extracted()])
     with pytest.raises(intent.InputError,match='unsupported'):asyncio.run(intent.parse('UH to Downtown arrive by noon'))

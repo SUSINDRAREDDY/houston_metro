@@ -55,9 +55,10 @@ def validate(parsed,text,now,defaults=None):
         raise ValueError('The model dropped the no-transfer requirement')
     if re.search(r'\b(?:no walking|without walking|do not walk)\b',lower) and parsed.allow_walking:
         raise ValueError('The model dropped the no-walking requirement')
-    if re.search(r'\b(?:by rail|by train|by tram|rail only|train only|tram only)\b',lower) and parsed.mode!='rail':
+    mixed_modes=bool(re.search(r'\b(?:bus|rail|train|tram)\s*,?\s*(?:or|and|/|\+)\s*(?:by\s+)?(?:bus|rail|train|tram)\b',lower))
+    if not mixed_modes and re.search(r'\b(?:by rail|by train|by tram|rail only|train only|tram only)\b',lower) and parsed.mode!='rail':
         raise ValueError('The model dropped the rail requirement')
-    if re.search(r'\b(?:by bus|bus only)\b',lower) and parsed.mode!='bus':
+    if not mixed_modes and re.search(r'\b(?:by bus|bus only)\b',lower) and parsed.mode!='bus':
         raise ValueError('The model dropped the bus requirement')
     explicit_date=bool(re.search(r'\b(tomorrow|today|yesterday|next week|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2})\b',lower))
     explicit_time=bool(re.search(r'\b(\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)|\d{1,2}:\d{2}|noon|midnight|morning|afternoon|evening|tonight|at\s+\d|after\s+\d|in\s+\d+\s+(?:minutes?|hours?))\b',lower))
@@ -71,6 +72,7 @@ def validate(parsed,text,now,defaults=None):
     if parsed.date_text and 'tomorrow' in parsed.date_text.lower():day=now.date()+timedelta(days=1)
     if parsed.date_text and parsed.date_text.lower()=='today':day=now.date()
     now_words=bool(parsed.time_text and re.fullmatch(r'(?:leave |right |depart )?now',parsed.time_text.strip(),re.I))
+    if now_words and not parsed.date_text:day=now.date()
     clock=parsed.time if parsed.time_text and not now_words else (now if now_words else selected).strftime('%H:%M')
     if parsed.time_text and re.fullmatch(r'(?:at |after )?\d{1,2}',parsed.time_text.strip(),re.I) and not re.search(r'\b(?:am|pm|morning|afternoon|evening|tonight)\b',lower):
         raise InputError(ISSUES['ambiguous_time'],'ambiguous_time')
