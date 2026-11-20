@@ -52,3 +52,31 @@ def test_no_options_and_upstream_error_are_distinct(monkeypatch):
     assert run()==[]
     monkeypatch.setattr(httpx,'AsyncClient',lambda **kw:original(transport=httpx.MockTransport(lambda r:httpx.Response(503)),**kw))
     with pytest.raises(ValueError,match='unavailable'):run()
+
+def test_journey_validates_ids_and_releases_database_before_network(monkeypatch):
+    from backend import main
+    from contextlib import contextmanager
+    points=[{'stop_id':str(i),'stop_name':str(i),'stop_lat':lat,'stop_lon':-95.3} for i,lat in ((1,29.7),(2,29.72),(3,29.9))]
+    state={'open':False,'calls':0}
+    class DB:
+        def execute(self,sql,parameters=()):
+            return [p for p in points if p['stop_id'] in parameters] if 'FROM stops' in sql else []
+    @contextmanager
+    def connect():
+        state['open']=True
+        try:yield DB()
+        finally:state['open']=False
+    async def plan(*args):
+        assert state['open'] is False
+        state['calls']+=1
+        return []
+    monkeypatch.setattr(main.routing,'connect',connect)
+    monkeypatch.setattr(main.connected,'plan',plan)
+    departure=datetime.now(routing.TZ)+timedelta(days=1)
+    for origin,destination in ((['missing'],['2']),(['1'],['1']),(['1','3'],['2'])):
+        with pytest.raises(HTTPException) as error:
+            asyncio.run(main.journeys(main.JourneyRequest(origin_ids=origin,destination_ids=destination,departure=departure)))
+        assert error.value.status_code==422
+    assert state['calls']==0
+    result=asyncio.run(main.journeys(main.JourneyRequest(origin_ids=['1'],destination_ids=['2'],departure=departure)))
+    assert result['journeys']==[] and state['calls']==1

@@ -12,5 +12,6 @@ data:
   UPLOAD_BUCKET: metroai-vm-milestone-20260922-uploads
   DATA_DIR: /tmp/metro-cache
   BACKGROUND_REFRESH_ENABLED: 'false'
-  OPENROUTER_MODEL: openrouter/free
+  OPENROUTER_MODEL: nvidia/nemotron-3-ultra-550b-a55b:free
+  OPENROUTER_REASONING_EFFORT: none
   PYTHONDONTWRITEBYTECODE: '1'

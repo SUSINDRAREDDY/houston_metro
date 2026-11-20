@@ -4,6 +4,8 @@ import httpx
 from .routing import TZ
 from . import demo_trace
 URL='https://houston-otp-server.ibi-transit.com/otp/gtfs/v1'
+class PlannerUnavailable(ValueError):
+    pass
 QUERY='''query($from:String!,$to:String!,$date:String!,$time:String!,$modes:[TransportMode]) {
 plan(fromPlace:$from,toPlace:$to,date:$date,time:$time,transportModes:$modes,numItineraries:12){
 itineraries{duration startTime endTime legs{mode startTime endTime distance realTime
@@ -60,14 +62,14 @@ async def plan(origin,dest,departure,mode,max_transfers,prefer,excluded=(),avoid
     variables={'from':f"{origin['stop_lat']},{origin['stop_lon']}",'to':f"{dest['stop_lat']},{dest['stop_lon']}",'date':at.strftime('%Y-%m-%d'),'time':at.strftime('%H:%M:%S'),'modes':modes}
     demo_trace.event('EXTERNAL_REQUEST', provider='METRO planner', coordinates_and_time=variables)
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(15,connect=4)) as client:
             response=await client.post(URL,json={'query':QUERY,'variables':variables});response.raise_for_status();data=response.json()
         if data.get('errors'):raise ValueError('Planner rejected the request')
         itineraries=data['data']['plan']['itineraries']
         result=[j for it in itineraries if (j:=convert(it,departure,max_transfers,mode,excluded,avoid))]
         demo_trace.event('EXTERNAL_RESULT', provider='METRO planner', itineraries_received=len(itineraries), itineraries_matching_filters=len(result))
     except (httpx.HTTPError,ValueError,KeyError,TypeError,IndexError):
-        raise ValueError('Connected journey planner is unavailable. Try again or turn off walking to search local schedules.') from None
+        raise PlannerUnavailable('Connected journey planner is unavailable. Try again or turn off walking to search local schedules.') from None
     for journey in result:
         journey['legs'][0]['from']['stop_name']=origin['stop_name']
         journey['legs'][-1]['to']['stop_name']=dest['stop_name']

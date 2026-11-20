@@ -40,10 +40,19 @@ fail_readiness=0
 if [[ -f deploy/milestone6-fail-readiness ]]; then
     fail_readiness=1
 fi
-patch=$(jq -cn --arg image "$candidate_image" --arg commit "$candidate_commit" --arg fail "$fail_readiness" '{
+# Put AI settings in the revision so a rollback restores the matching model config.
+ai_model=$(awk '$1 == "OPENROUTER_MODEL:" {print $2}' k8s/configmap.yaml)
+ai_effort=$(awk '$1 == "OPENROUTER_REASONING_EFFORT:" {print $2}' k8s/configmap.yaml)
+case "$ai_model" in
+    openrouter/free|*:free) ;;
+    *) printf 'A free AI model must be configured\n' >&2; exit 1 ;;
+esac
+patch=$(jq -cn --arg image "$candidate_image" --arg commit "$candidate_commit" --arg fail "$fail_readiness" --arg model "$ai_model" --arg effort "$ai_effort" '{
   spec: {template: {spec: {containers: [{name: "app", image: $image, env: [
     {name: "METROAI_BUILD_SHA", value: $commit},
-    {name: "METROAI_FAIL_READINESS", value: $fail}
+    {name: "METROAI_FAIL_READINESS", value: $fail},
+    {name: "OPENROUTER_MODEL", value: $model},
+    {name: "OPENROUTER_REASONING_EFFORT", value: $effort}
   ]}]}}}
 }')
 

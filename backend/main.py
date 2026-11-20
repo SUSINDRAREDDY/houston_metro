@@ -13,8 +13,8 @@ from fastapi import FastAPI,HTTPException,Query,Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel,Field
-from . import alerts,intent,routing,ingest,cloud_data,connected,database,uploads
+from pydantic import BaseModel,Field,AwareDatetime
+from . import alerts,intent,routing,ingest,cloud_data,connected,database,uploads,stations
 from .config import ROOT,DB
 from . import demo_trace
 
@@ -183,7 +183,18 @@ async def vehicles(route_id:str=Query(pattern=r'^[0-9]{1,4}$')):
 @app.get('/api/alerts')
 def get_alerts():return alerts.snapshot()
 
-class ParseRequest(BaseModel):text:str=Field(min_length=5,max_length=800)
+class ParseDefaults(BaseModel):
+    mode:Literal['any','bus','rail']='any'
+    max_transfers:Literal[0,1,2,3]=1
+    prefer:Literal['fastest','fewer_transfers']='fastest'
+    avoid_alerts:bool=False
+    allow_walking:bool=True
+    departure:AwareDatetime|None=None
+    leave_now:bool=True
+
+class ParseRequest(BaseModel):
+    text:str=Field(min_length=5,max_length=800)
+    defaults:ParseDefaults=Field(default_factory=ParseDefaults)
 rate=defaultdict(deque)
 
 @app.post('/api/interpret')
@@ -196,20 +207,23 @@ async def interpret(body:ParseRequest,request:Request):
         if len(rate[k]) >= (5 if k==host else 15):raise HTTPException(429,'Too many AI requests. Please use the stop controls or try again shortly.')
     rate[host].append(now);rate['global'].append(now)
     try:
-        direct = None if demo_trace.enabled() else intent.parse_direct(body.text, datetime.now(routing.TZ))
-        if direct:
-            parsed = direct['intent']
-            try:
-                with routing.connect() as db:
-                    if routing.stop_search(db, parsed['origin']) and routing.stop_search(db, parsed['destination']):
-                        demo_trace.event('DIRECT_INTENT', result=direct)
-                        return direct
-            except ValueError:
-                # A local timetable may not be loaded yet. Keep AI interpretation available.
-                pass
-        result=await intent.parse(body.text)
+        async with asyncio.timeout(30):
+            catalog=await asyncio.to_thread(stations.load)
+            hints=await asyncio.to_thread(catalog.hints,body.text)
+            result=await intent.parse(body.text,station_names=hints,defaults=body.defaults.model_dump(mode='json'))
+            parsed=result['intent']
+            origin=await asyncio.to_thread(catalog.resolve,parsed['origin'],'starting place')
+            destination=await asyncio.to_thread(catalog.resolve,parsed['destination'],'destination')
+            if {s['stop_id'] for s in origin['stops']} & {s['stop_id'] for s in destination['stops']}:
+                raise intent.InputError('The starting place and destination resolve to the same station. Select different stops.','same_station')
+            result.update(origin=origin,destination=destination,validated=True)
         demo_trace.event('AI_INTENT', provider='OpenRouter', result=result)
         return result
+    except (intent.InputError,stations.ResolutionError) as e:
+        code=e.code
+        raise HTTPException(503 if code=='ai_unavailable' else 422,detail=str(e)) from None
+    except TimeoutError:
+        raise HTTPException(503,detail='Trip interpretation took too long. Use the stop and time controls.') from None
     except (ValueError,httpx.HTTPError) as e:
         message=str(e) if isinstance(e,ValueError) else 'AI request timed out. Use the stop and time controls.'
         demo_trace.event('AI_ERROR', message=message)
@@ -218,7 +232,7 @@ async def interpret(body:ParseRequest,request:Request):
 class JourneyRequest(BaseModel):
     origin_ids:list[str]=Field(min_length=1,max_length=12)
     destination_ids:list[str]=Field(min_length=1,max_length=12)
-    departure:datetime
+    departure:AwareDatetime
     mode:Literal['any','bus','rail']='any'
     max_transfers:Literal[0,1,2,3]=1
     leave_now:bool=False
@@ -237,28 +251,37 @@ async def journeys(body:JourneyRequest):
     if body.avoid_alerts and a['status']!='current':raise HTTPException(503,'Current alerts are unavailable. Turn off avoid alerts or try again later.')
     try:
         with routing.connect() as db:
+            selected=body.origin_ids+body.destination_ids
+            placeholders=','.join('?' for _ in selected)
+            points={str(r['stop_id']):dict(r) for r in db.execute(f'SELECT * FROM stops WHERE stop_id IN ({placeholders})',selected)}
+            if any(s not in points for s in selected):raise ValueError('Choose valid stops.')
+            if set(body.origin_ids)&set(body.destination_ids):raise ValueError('Choose different starting and destination stops.')
+            for ids in (body.origin_ids,body.destination_ids):
+                if any(routing.distance(points[ids[0]],points[s])>500 for s in ids):
+                    raise ValueError('Select stops within one station for each end of the trip.')
             route_rows=[dict(r) for r in db.execute('SELECT * FROM routes')]
             matched={r['route_id']:alerts.for_route(a['alerts'],r) for r in route_rows}
             exclude=[rid for rid,items in matched.items() if items] if body.avoid_alerts else []
-            if body.allow_walking:
-                demo_trace.event('ROUTING_SOURCE', source='external METRO planner', sqlite_role='route metadata and stop coordinates')
-                points={r['stop_id']:dict(r) for r in db.execute('SELECT * FROM stops')}
-                if any(s not in points for s in body.origin_ids+body.destination_ids):raise ValueError('Choose valid stops.')
-                options=await connected.plan(points[body.origin_ids[0]],points[body.destination_ids[0]],body.departure,body.mode,body.max_transfers,body.prefer,exclude,body.avoid_alerts)
-            else:
+            if not body.allow_walking:
                 demo_trace.event('ROUTING_SOURCE', source='local SQLite', tables=['stops','routes','trips','stop_times','calendar','calendar_dates','feed_info','transfers'])
                 if body.max_transfers>1:raise ValueError('Enable walking and connected journeys for more than one transfer.')
                 options=routing.plan(db,body.origin_ids,body.destination_ids,body.departure,body.mode,body.max_transfers,body.prefer,exclude)
-            for journey in options:
-                colors={r['route_id']:r['route_color'] for r in route_rows}
-                for leg in journey['legs']:leg['color']=colors.get(leg['route_id'],'')
-                found={x['id']:x for leg in journey['legs'] for x in matched.get(leg['route_id'],[])}
-                journey['alerts']=list({x['header'].strip().lower():x for x in journey.get('alerts',[])+list(found.values())}.values())
+        # Release the SQL connection before waiting for the external journey API.
+        if body.allow_walking:
+            demo_trace.event('ROUTING_SOURCE', source='external METRO planner', sqlite_role='route metadata and stop coordinates')
+            options=await connected.plan(points[body.origin_ids[0]],points[body.destination_ids[0]],body.departure,body.mode,body.max_transfers,body.prefer,exclude,body.avoid_alerts)
+        colors={r['route_id']:r['route_color'] for r in route_rows}
+        for journey in options:
+            for leg in journey['legs']:leg['color']=colors.get(leg['route_id'],'')
+            found={x['id']:x for leg in journey['legs'] for x in matched.get(leg['route_id'],[])}
+            journey['alerts']=list({x['header'].strip().lower():x for x in journey.get('alerts',[])+list(found.values())}.values())
         demo_trace.event('JOURNEY_RESULT', count=len(options), database_write=False, journeys=[{'departure':j['departure'],'arrival':j['arrival'],'legs':[{'route_id':l['route_id'],'trip_id':l.get('trip_id'),'from':l['from']['stop_name'],'to':l['to']['stop_name']} for l in j['legs']]} for j in options])
         return {'journeys':options,'alerts_status':a['status'],'alerts_fetched_at':a['fetched_at'],
             'searched_departure':body.departure.isoformat(),'empty_message':'No bus or rail journey matches this time and your preferences within the next four hours. Try another time or allow more transfers.' if not options else None,
             'notice':'Houston time. Connected journeys use METRO planner paths and available live updates; local journeys use schedules.',
             'search_window_hours':4,'transfer_policy':('METRO planner connections; up to 3 transfers and 1.2 km total walking.' if body.allow_walking else 'Same stop or GTFS-declared transfer; minimum 3 minutes; maximum wait 60 minutes.')}
+    except connected.PlannerUnavailable as e:
+        raise HTTPException(503,str(e)) from None
     except ValueError as e:
         demo_trace.event('JOURNEY_ERROR', message=str(e))
         raise HTTPException(422,str(e))
