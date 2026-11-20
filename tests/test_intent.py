@@ -92,3 +92,30 @@ def test_interpret_uses_direct_parser_for_known_stops(monkeypatch):
     unknown = asyncio.run(main.interpret(main.ParseRequest(text='UH to unknown station'), request))
     assert unknown['model'] == 'test-provider'
     assert calls == ['UH to unknown station']
+
+
+def test_misspelled_fannin_trip_uses_real_stop_lookup_without_ai(monkeypatch):
+    import sqlite3
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+    from backend import main
+
+    db=sqlite3.connect(':memory:');db.row_factory=sqlite3.Row
+    db.execute('CREATE TABLE stops(stop_id TEXT,stop_code TEXT,stop_name TEXT,stop_lat REAL,stop_lon REAL,location_type TEXT)')
+    for i,name in enumerate(['Uh South University Oaks NB','Fannin South Stn NB',
+                             'Fannin South Stn SB','Fannin St @ Southmore Blvd']):
+        db.execute('INSERT INTO stops VALUES (?,?,?,?,?,?)',(str(i),str(i),name,29.7,-95.4,'0'))
+    monkeypatch.setattr(main.demo_trace,'enabled',lambda:False)
+    monkeypatch.setattr(main.routing,'connect',lambda:nullcontext(db))
+    monkeypatch.setattr(main,'rate',main.defaultdict(main.deque))
+    async def unavailable_provider(text):
+        raise AssertionError('A recognized station trip must not call the AI provider')
+    monkeypatch.setattr(intent,'parse',unavailable_provider)
+    request=SimpleNamespace(client=SimpleNamespace(host='test'))
+    result=asyncio.run(main.interpret(main.ParseRequest(text='uh to fanin south'),request))
+    assert result['model']=='metroai-direct'
+    assert result['intent']['origin']=='uh'
+    assert result['intent']['destination']=='fanin south'
+    assert result['leave_now'] is True
+    assert len(main.routing.stop_search(db,result['intent']['destination']))==2
+    db.close()

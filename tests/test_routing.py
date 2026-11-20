@@ -56,3 +56,18 @@ def test_downtown_includes_red_line():
         db.execute('INSERT INTO stops VALUES (?,?,?,?,?)',(str(i),str(i),name,29.75,-95.36))
     assert len(stop_search(db,'Downtown'))==4
     db.close()
+
+
+@pytest.mark.parametrize('query', ['Fannin South', 'fanin south', 'Fanin South Station',
+                                  '  FANNIN   SOUTH  ', 'Fanin South Stn'])
+def test_fannin_south_resolves_rail_platforms_without_other_street_stops(query):
+    import sqlite3
+    db=sqlite3.connect(':memory:');db.row_factory=sqlite3.Row
+    db.execute('CREATE TABLE stops(stop_id TEXT,stop_code TEXT,stop_name TEXT,stop_lat REAL,stop_lon REAL,location_type TEXT)')
+    names=['Fannin South PR','Fannin South Stn NB','Fannin South Stn SB',
+           'Fannin St @ Southmore Blvd','Fannin St @ Bell St']
+    for i,name in enumerate(names):
+        db.execute('INSERT INTO stops VALUES (?,?,?,?,?,?)',(str(i),str(i),name,29.67,-95.40,'0'))
+    assert [s['stop_name'] for s in routing.stop_search(db,query)]==[
+        'Fannin South Stn NB','Fannin South Stn SB']
+    db.close()

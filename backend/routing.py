@@ -2,6 +2,7 @@
 import bisect
 import json
 import math
+import re
 import sqlite3
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -32,10 +33,14 @@ def stop_search(db,q,limit=12):
     q=q.strip()
     if not q:return []
     # Aliases resolve to actual named GTFS stops, not invented coordinates.
-    aliases={'uh':'uh south university oaks','university of houston':'uh south university oaks','uh central':'uh south university oaks','downtown':'central station','downtown houston':'central station','medical center':'dryden/tmc','nrg':'stadium park','airport':'iah'}
-    if q.lower() in ('downtown','downtown houston'):
+    aliases={'uh':'uh south university oaks','university of houston':'uh south university oaks','uh central':'uh south university oaks','downtown':'central station','downtown houston':'central station','medical center':'dryden/tmc','nrg':'stadium park','airport':'iah',
+             'fannin south':'fannin south stn','fannin south station':'fannin south stn'}
+    # Normalize this common street-name typo before looking up real GTFS stops.
+    # The station alias excludes unrelated Fannin/Southmore street stops.
+    query=re.sub(r'\bfanin\b','fannin',' '.join(q.lower().split()))
+    if query in ('downtown','downtown houston'):
         return [dict(r) for r in db.execute("SELECT stop_id,stop_code,stop_name,stop_lat,stop_lon FROM stops WHERE stop_name LIKE 'Central Station %' OR stop_name LIKE 'Central Stn Main %' ORDER BY stop_name LIMIT ?",(limit,))]
-    term=aliases.get(q.lower(),q)
+    term=aliases.get(query,query)
     tokens=term.replace('%','').replace('_','').split()
     where=' AND '.join('stop_name LIKE ?' for _ in tokens)
     rows=db.execute(f'''SELECT stop_id,stop_code,stop_name,stop_lat,stop_lon FROM stops
